@@ -78,24 +78,27 @@ test("shows real photos, names, worlds, and discoveries while processing", async
 });
 
 test("infers self and the standout two-person relationship from metadata", async () => {
-  const [analyzer, metadata] = await Promise.all([
+  const [analyzer, inference, metadata] = await Promise.all([
     readFile(new URL("../app/lib/memory.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/recapInference.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/pngMetadata.ts", import.meta.url), "utf8"),
   ]);
   assert.match(metadata, /value\.world\?\.displayName \?\? value\.world\?\.name/);
   assert.match(metadata, /players/);
   assert.match(analyzer, /add\(metadata\.authorId, metadata\.authorName\)/);
   assert.match(analyzer, /metadata\.players\.forEach/);
-  assert.match(analyzer, /sort\(\(a, b\) => b\.photoCount - a\.photoCount/);
-  assert.match(analyzer, /photo\.participants\.length !== 2/);
-  assert.match(analyzer, /pairPhotosByPerson/);
-  assert.match(analyzer, /specialMetadataEntry/);
+  assert.match(analyzer, /inferMetadataPeople\(records\)/);
+  assert.match(inference, /sort\(\(a, b\) => b\.photoCount - a\.photoCount/);
+  assert.match(inference, /photo\.participants\.length !== 2/);
+  assert.match(inference, /pairPhotoIds\.push\(photo\.id\)/);
+  assert.match(inference, /const special = results/);
   assert.match(analyzer, /displayName: specialMetadataPerson\.name/);
 });
 
 test("falls back to metadata when face processing is unavailable and uses recurring faces when metadata is absent", async () => {
-  const [analyzer, localVision, packageJson, model, wasm] = await Promise.all([
+  const [analyzer, inference, localVision, packageJson, model, wasm] = await Promise.all([
     readFile(new URL("../app/lib/memory.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/recapInference.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/localVision.ts", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     stat(new URL("../public/models/blaze_face_short_range.tflite", import.meta.url)),
@@ -115,9 +118,10 @@ test("falls back to metadata when face processing is unavailable and uses recurr
   assert.match(analyzer, /try \{\s*faceDetector = await createLocalFaceDetector\(\);\s*\} catch \{\s*faceDetector = null;/s);
   assert.match(analyzer, /faceDetector && participants\.length === 0/);
   assert.match(analyzer, /assignFaceClusters/);
-  assert.match(analyzer, /validFaceClusters/);
-  assert.match(analyzer, /const inferredSelfFace = self \? undefined : validFaceClusters\[0\]/);
-  assert.match(analyzer, /facePairPhotos/);
+  assert.match(analyzer, /inferRecurringFaces\(faceClusters, records, Boolean\(self\)\)/);
+  assert.match(inference, /recurringClusters/);
+  assert.match(inference, /const selfFaceId = recurringClusters\[0\]\.id/);
+  assert.match(inference, /const pairPhotos = new Map/);
   assert.match(analyzer, /inference: "faces"/);
 });
 
