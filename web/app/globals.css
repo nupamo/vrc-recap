@@ -118,7 +118,7 @@ img {
 }
 
 .language-switcher button[aria-pressed="true"] {
-  background: currentColor;
+  background: var(--ink);
   color: var(--paper);
 }
 
@@ -384,6 +384,7 @@ img {
 
 .loading-topbar .language-switcher button[aria-pressed="true"],
 .recap-topbar .language-switcher button[aria-pressed="true"] {
+  background: var(--cream);
   color: var(--ink);
 }
 
