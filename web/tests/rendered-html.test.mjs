@@ -148,3 +148,34 @@ test("supports recursive folder selection and the browser folder-input fallback"
   assert.match(app, /webkitdirectory/);
   assert.match(app, /multiple/);
 });
+
+test("turns the final chapter into a Twitter-ready comprehensive result card", async () => {
+  const [app, css] = await Promise.all([
+    readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(app, /className="recap-share-chapter"/);
+  assert.match(app, /className="share-summary-card"/);
+  assert.match(app, /journey\.totalPhotos/);
+  assert.match(app, /journey\.stats\.activeDays/);
+  assert.match(app, /journey\.stats\.topMonth/);
+  assert.match(app, /journey\.stats\.topWorlds\[0\]/);
+  assert.match(app, /specialName/);
+  assert.match(app, /journey\.stats\.people\.slice\(0, 4\)/);
+  assert.match(app, /createShareCardBlob/);
+  assert.match(app, /canvas\.width = 1600/);
+  assert.match(app, /canvas\.height = 900/);
+  assert.match(app, /canvas\.toBlob/);
+  assert.match(app, /navigator\.canShare/);
+  assert.match(app, /navigator\.share/);
+  assert.match(app, /twitter\.com\/intent\/tweet/);
+  assert.match(app, /downloadBlob/);
+  assert.match(app, /이미지로 공유하기/);
+  assert.match(app, /Share as an image/);
+  assert.match(app, /画像として共有/);
+  assert.doesNotMatch(app, /className="recap-ending"/);
+  assert.match(css, /\.share-summary-card \{/);
+  assert.match(css, /aspect-ratio: 16 \/ 9/);
+  assert.match(css, /\.share-summary-photos img \{[\s\S]*object-fit: contain/);
+});

@@ -1156,46 +1156,291 @@ img {
   min-height: 300px;
 }
 
-.recap-ending {
-  display: grid;
-  min-height: 94vh;
-  place-items: center;
-  align-content: center;
-  padding: 80px 22px;
-  background: #181816;
+.recap-share-chapter {
+  min-height: 100vh;
+  padding: clamp(90px, 10vw, 150px) clamp(20px, 5vw, 80px) 90px;
+  background:
+    radial-gradient(circle at 82% 16%, rgba(168, 70, 50, 0.22), transparent 32%),
+    #181816;
   color: var(--cream);
+}
+
+.share-chapter-heading {
+  max-width: 850px;
+  margin: 0 auto 58px;
   text-align: center;
 }
 
-.recap-ending > p {
-  margin: 0 0 30px;
-  color: #d58d79;
-  font: 700 10px/1 "Segoe UI", sans-serif;
-  letter-spacing: 0.14em;
+.share-chapter-heading > p {
+  margin: 0 0 20px;
+  color: #df927d;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
 }
 
-.recap-ending h2 {
-  max-width: 1050px;
+.share-chapter-heading h2 {
   margin: 0;
-  font: 400 clamp(52px, 7.5vw, 118px)/1 Georgia, "Noto Serif KR", "Yu Mincho", serif;
+  font: 400 clamp(50px, 7vw, 104px)/1 Georgia, "Noto Serif KR", "Yu Mincho", serif;
   letter-spacing: -0.055em;
 }
 
-.recap-ending blockquote {
+.share-chapter-heading > span {
+  display: block;
   max-width: 690px;
-  margin: 42px 0;
-  color: #b7b0a5;
-  font-size: 16px;
-  line-height: 1.9;
+  margin: 28px auto 0;
+  color: #b9b1a7;
+  font-size: 15px;
+  line-height: 1.8;
 }
 
-.recap-ending button {
-  padding: 14px 22px;
-  border: 1px solid rgba(255, 250, 240, 0.55);
+.share-summary-card {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  width: min(100%, 1420px);
+  aspect-ratio: 16 / 9;
+  min-height: 680px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(241, 237, 229, 0.2);
+  background: #171715;
+  box-shadow: 0 42px 100px rgba(0, 0, 0, 0.42);
+}
+
+.share-summary-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: clamp(34px, 4.4vw, 72px);
+}
+
+.share-summary-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.share-summary-brand i {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  background: var(--rust);
+  color: var(--cream);
+  font: normal 800 13px/1 "Segoe UI", sans-serif;
+}
+
+.share-summary-brand span {
+  color: var(--cream);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.share-summary-copy > p {
+  margin: 40px 0 0;
+  color: #d9907d;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.share-summary-copy h3 {
+  overflow: hidden;
+  margin: 15px 0 0;
+  color: var(--cream);
+  font: 400 clamp(38px, 4.5vw, 72px)/1 Georgia, "Noto Serif KR", "Yu Mincho", serif;
+  letter-spacing: -0.05em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-primary-number {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-top: clamp(30px, 4vw, 66px);
+}
+
+.share-primary-number b {
+  font: 400 clamp(70px, 8vw, 132px)/0.8 Georgia, serif;
+  letter-spacing: -0.06em;
+}
+
+.share-primary-number span {
+  color: #d9907d;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.share-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: auto;
+  border-top: 1px solid rgba(241, 237, 229, 0.18);
+  border-left: 1px solid rgba(241, 237, 229, 0.18);
+}
+
+.share-result-grid article {
+  min-width: 0;
+  padding: 18px;
+  border-right: 1px solid rgba(241, 237, 229, 0.18);
+  border-bottom: 1px solid rgba(241, 237, 229, 0.18);
+}
+
+.share-result-grid span,
+.share-people > span {
+  display: block;
+  overflow: hidden;
+  color: #8f8980;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-result-grid b {
+  display: block;
+  overflow: hidden;
+  margin-top: 10px;
+  color: var(--cream);
+  font: 400 clamp(16px, 1.7vw, 26px)/1.2 Georgia, "Noto Serif KR", "Yu Mincho", serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-people {
+  margin-top: 22px;
+}
+
+.share-people p {
+  overflow: hidden;
+  margin: 9px 0 0;
+  color: #d3ccc1;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-summary-photos {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1.35fr) minmax(0, 0.92fr);
+  gap: 14px;
+  min-width: 0;
+  padding: 34px 34px 68px 10px;
+}
+
+.share-summary-photos::before {
+  position: absolute;
+  top: -10%;
+  right: -8%;
+  width: 72%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(168, 70, 50, 0.17);
+  filter: blur(42px);
+  content: "";
+}
+
+.share-summary-photos figure {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  place-items: center;
+  border: 10px solid #e9e0d2;
+  border-bottom-width: 27px;
+  background: #0d0d0c;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.3);
+}
+
+.share-summary-photos .share-photo-1 {
+  grid-column: 1 / span 2;
+  transform: rotate(-1deg);
+}
+
+.share-summary-photos .share-photo-2 {
+  transform: rotate(1.4deg);
+}
+
+.share-summary-photos .share-photo-3 {
+  transform: rotate(-1.2deg);
+}
+
+.share-summary-photos img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.share-summary-photos > b {
+  position: absolute;
+  z-index: 2;
+  right: 36px;
+  bottom: 28px;
+  color: #9e968c;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 42px;
+}
+
+.share-actions button {
+  min-height: 48px;
+  padding: 0 20px;
+  border: 1px solid rgba(241, 237, 229, 0.45);
   border-radius: 999px;
   background: transparent;
   color: var(--cream);
   font-size: 11px;
+  font-weight: 700;
+}
+
+.share-actions button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.share-actions .share-native-button {
+  border-color: var(--rust);
+  background: var(--rust);
+}
+
+.share-actions .share-x-button {
+  border-color: var(--cream);
+  background: var(--cream);
+  color: var(--ink);
+}
+
+.share-x-button b {
+  margin-right: 9px;
+  font-size: 15px;
+}
+
+.share-actions .share-restart-button {
+  border-color: transparent;
+  color: #938d84;
+}
+
+.share-status {
+  min-height: 24px;
+  margin: 18px 0 0;
+  color: #b9b1a7;
+  font-size: 11px;
+  text-align: center;
 }
 
 @media (max-width: 1100px) {
@@ -1489,6 +1734,87 @@ img {
 
   .timeline-gallery .recap-photo-frame figcaption time {
     grid-row: auto;
+  }
+
+  .recap-share-chapter {
+    padding: 82px 14px 60px;
+  }
+
+  .share-chapter-heading {
+    margin-bottom: 38px;
+  }
+
+  .share-chapter-heading h2 {
+    font-size: clamp(48px, 14vw, 72px);
+  }
+
+  .share-summary-card {
+    grid-template-columns: 1fr;
+    aspect-ratio: auto;
+    min-height: 0;
+  }
+
+  .share-summary-copy {
+    min-height: 620px;
+    padding: 28px 22px;
+  }
+
+  .share-summary-copy > p {
+    margin-top: 34px;
+  }
+
+  .share-summary-copy h3 {
+    font-size: clamp(38px, 11vw, 56px);
+    white-space: normal;
+  }
+
+  .share-primary-number {
+    margin-top: 45px;
+  }
+
+  .share-primary-number b {
+    font-size: clamp(78px, 24vw, 112px);
+  }
+
+  .share-result-grid {
+    margin-top: 52px;
+  }
+
+  .share-result-grid article {
+    padding: 15px;
+  }
+
+  .share-result-grid b {
+    font-size: 18px;
+  }
+
+  .share-summary-photos {
+    grid-template-rows: 330px 220px;
+    min-height: 620px;
+    padding: 28px 18px 64px;
+  }
+
+  .share-summary-photos figure {
+    border-width: 7px;
+    border-bottom-width: 20px;
+  }
+
+  .share-summary-photos > b {
+    right: 20px;
+    bottom: 28px;
+  }
+
+  .share-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .share-actions button {
+    padding: 0 13px;
+  }
+
+  .share-actions .share-restart-button {
+    grid-column: 1 / span 2;
   }
 }
 

@@ -101,6 +101,25 @@ const COPY = {
     recapTitle: (name?: string) => name ? `${name}님의 추억` : "당신의 추억",
     scroll: "아래로 내려 추억을 이어서 보세요",
     seasonNames: ["봄", "여름", "가을", "겨울"],
+    shareBody: "한 장에 모은 올해의 월드, 사람, 사진을 이미지로 저장하거나 X에 바로 공유해 보세요.",
+    shareCardTitle: (name?: string) => name ? `${name}님의 VRChat Recap` : "나의 VRChat Recap",
+    shareFailed: "공유 이미지를 만들지 못했어요. 잠시 후 다시 시도해 주세요.",
+    shareImage: "이미지로 공유하기",
+    shareLabel: "한 장으로 보는 종합 결과",
+    shareMonthValue: (month: string, photos: number) => `${month} · ${photos.toLocaleString("ko-KR")}장`,
+    sharePost: (photos: number, world?: string, person?: string) => [
+      `${photos.toLocaleString("ko-KR")}장의 VRChat 추억을 돌아봤어요.`,
+      world ? `가장 많이 찾은 월드는 ${world}.` : "",
+      person ? `둘만의 추억이 가장 많은 사람은 ${person}.` : "",
+      "#VRChatRecap",
+    ].filter(Boolean).join(" "),
+    sharePreparing: "공유 이미지를 만들고 있어요…",
+    shareSaved: "공유 이미지가 저장됐어요. X 글에 첨부해 보세요.",
+    shareSpecialValue: (name: string, photos: number) => `${name} · 둘만의 사진 ${photos.toLocaleString("ko-KR")}장`,
+    shareSuccess: "공유 화면을 열었어요.",
+    shareTitle: "이 모든 추억을 한 장에",
+    shareWorldValue: (world: string, visits: number) => `${world} · ${visits.toLocaleString("ko-KR")}회`,
+    saveShareImage: "공유 이미지 저장",
     selfBody: (name: string, count: number) => `${name}님은 ${count.toLocaleString("ko-KR")}장의 사진에 가장 자주 남은 이름이에요.`,
     selfFaceBody: (count: number) => `${count.toLocaleString("ko-KR")}장의 사진에서 가장 익숙한 얼굴의 흐름이 이어졌어요.`,
     specialBody: (count: number) => `둘만 함께한 사진이 ${count.toLocaleString("ko-KR")}장. 많은 사람 가운데서도 유난히 자주 둘만의 순간이 남았습니다.`,
@@ -118,11 +137,13 @@ const COPY = {
     topMonth: "가장 많은 추억이 남은 달",
     topPeople: "함께한 이름",
     topSeason: "가장 많은 장면이 남은 계절",
+    topWorld: "가장 많이 찾은 월드",
     unknownDate: "날짜를 확인하는 중",
     visits: "번의 방문",
     worldBody: "문을 열고 다시 찾았던 장소들이 추억의 배경으로 남았습니다.",
     worldPhotos: "장의 사진",
     worldsTitle: "몇 번이고 돌아간 월드",
+    xShare: "X에 공유하기",
   },
   en: {
     activeDays: "days remembered",
@@ -166,6 +187,25 @@ const COPY = {
     recapTitle: (name?: string) => name ? `${name}'s memories` : "Your memories",
     scroll: "Scroll to continue through your memories",
     seasonNames: ["spring", "summer", "autumn", "winter"],
+    shareBody: "Save the worlds, people, and photos that shaped your Recap as one image, or open a post on X.",
+    shareCardTitle: (name?: string) => name ? `${name}'s VRChat Recap` : "My VRChat Recap",
+    shareFailed: "The share image could not be created. Please try again.",
+    shareImage: "Share as an image",
+    shareLabel: "YOUR STORY AT A GLANCE",
+    shareMonthValue: (month: string, photos: number) => `${month} · ${photos.toLocaleString("en-US")} photos`,
+    sharePost: (photos: number, world?: string, person?: string) => [
+      `I looked back on ${photos.toLocaleString("en-US")} VRChat memories.`,
+      world ? `My most visited world was ${world}.` : "",
+      person ? `I shared the most two-person memories with ${person}.` : "",
+      "#VRChatRecap",
+    ].filter(Boolean).join(" "),
+    sharePreparing: "Preparing your share image…",
+    shareSaved: "Your share image was saved. Attach it to your post on X.",
+    shareSpecialValue: (name: string, photos: number) => `${name} · ${photos.toLocaleString("en-US")} two-person photos`,
+    shareSuccess: "The share sheet is open.",
+    shareTitle: "Your whole story, in one frame",
+    shareWorldValue: (world: string, visits: number) => `${world} · ${visits.toLocaleString("en-US")} visits`,
+    saveShareImage: "Save share image",
     selfBody: (name: string, count: number) => `${name} is the name that appears most often, across ${count.toLocaleString("en-US")} photos.`,
     selfFaceBody: (count: number) => `One familiar face keeps returning across ${count.toLocaleString("en-US")} photos.`,
     specialBody: (count: number) => `${count.toLocaleString("en-US")} photos hold a moment with just the two of you—a connection that stands out from all the rest.`,
@@ -183,11 +223,13 @@ const COPY = {
     topMonth: "The month that held the most memories",
     topPeople: "Names beside you",
     topSeason: "The season with the most moments",
+    topWorld: "Most visited world",
     unknownDate: "Finding the date",
     visits: "visits",
     worldBody: "The places you opened and returned to became the backdrop of your memories.",
     worldPhotos: "photos",
     worldsTitle: "The worlds you kept returning to",
+    xShare: "Share on X",
   },
   ja: {
     activeDays: "写真を残した日",
@@ -231,6 +273,25 @@ const COPY = {
     recapTitle: (name?: string) => name ? `${name}さんの思い出` : "あなたの思い出",
     scroll: "下へ進んで思い出の続きを見る",
     seasonNames: ["春", "夏", "秋", "冬"],
+    shareBody: "このRecapを彩ったワールド、人、写真を一枚の画像に保存したり、Xへの投稿を開いたりできます。",
+    shareCardTitle: (name?: string) => name ? `${name}さんのVRChat Recap` : "私のVRChat Recap",
+    shareFailed: "共有画像を作成できませんでした。もう一度お試しください。",
+    shareImage: "画像として共有",
+    shareLabel: "一枚で振り返る総合結果",
+    shareMonthValue: (month: string, photos: number) => `${month} · ${photos.toLocaleString("ja-JP")}枚`,
+    sharePost: (photos: number, world?: string, person?: string) => [
+      `${photos.toLocaleString("ja-JP")}枚のVRChatの思い出を振り返りました。`,
+      world ? `いちばん訪れたワールドは${world}。` : "",
+      person ? `ふたりだけの思い出が最も多い相手は${person}。` : "",
+      "#VRChatRecap",
+    ].filter(Boolean).join(" "),
+    sharePreparing: "共有画像を作成しています…",
+    shareSaved: "共有画像を保存しました。Xの投稿に添付してみましょう。",
+    shareSpecialValue: (name: string, photos: number) => `${name} · ふたりだけの写真${photos.toLocaleString("ja-JP")}枚`,
+    shareSuccess: "共有画面を開きました。",
+    shareTitle: "すべての思い出を、一枚に",
+    shareWorldValue: (world: string, visits: number) => `${world} · ${visits.toLocaleString("ja-JP")}回`,
+    saveShareImage: "共有画像を保存",
     selfBody: (name: string, count: number) => `${name}さんは、${count.toLocaleString("ja-JP")}枚の写真に最も多く残っている名前です。`,
     selfFaceBody: (count: number) => `${count.toLocaleString("ja-JP")}枚の写真に、ひとつの懐かしい顔の流れが続いていました。`,
     specialBody: (count: number) => `ふたりだけの写真は${count.toLocaleString("ja-JP")}枚。たくさんの人の中でも、ふたりの瞬間が特別に多く残っています。`,
@@ -248,11 +309,13 @@ const COPY = {
     topMonth: "いちばん多くの思い出が残った月",
     topPeople: "一緒にいた名前",
     topSeason: "いちばん多くの場面が残った季節",
+    topWorld: "いちばん訪れたワールド",
     unknownDate: "日付を確認しています",
     visits: "回訪問",
     worldBody: "扉を開き、何度も戻った場所が思い出の背景として残っています。",
     worldPhotos: "枚の写真",
     worldsTitle: "何度も戻ったワールド",
+    xShare: "Xで共有",
   },
 } as const;
 
@@ -275,6 +338,206 @@ function formatMonth(language: Language, year: number, month: number): string {
 
 function formatNumber(language: Language, value: number): string {
   return value.toLocaleString(localeFor(language));
+}
+
+function canvasText(
+  context: CanvasRenderingContext2D,
+  value: string,
+  maximumWidth: number,
+): string {
+  if (context.measureText(value).width <= maximumWidth) return value;
+  let shortened = value;
+  while (shortened.length > 1 && context.measureText(`${shortened}…`).width > maximumWidth) {
+    shortened = shortened.slice(0, -1);
+  }
+  return `${shortened}…`;
+}
+
+function drawContainedImage(
+  context: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  context.fillStyle = "#0d0d0c";
+  context.fillRect(x, y, width, height);
+  const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+  const drawWidth = image.naturalWidth * scale;
+  const drawHeight = image.naturalHeight * scale;
+  context.drawImage(
+    image,
+    x + (width - drawWidth) / 2,
+    y + (height - drawHeight) / 2,
+    drawWidth,
+    drawHeight,
+  );
+  context.strokeStyle = "rgba(241,237,229,.24)";
+  context.lineWidth = 2;
+  context.strokeRect(x, y, width, height);
+}
+
+function loadShareImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Unable to load a recap photo."));
+    image.src = url;
+  });
+}
+
+async function createShareCardBlob(
+  journey: MemoryJourney,
+  language: Language,
+  photos: RecapPhoto[],
+): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1600;
+  canvas.height = 900;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Unable to create the share card.");
+
+  const t = COPY[language];
+  const selfName = journey.stats.self?.displayName;
+  const special = journey.stats.specialPerson;
+  const specialName = special?.displayName ?? t.specialGeneric;
+  const topWorldResult = journey.stats.topWorlds[0];
+  const topWorld = topWorldResult?.displayName ?? t.noWorld;
+  const topMonth = formatMonth(
+    language,
+    journey.stats.topMonth.year,
+    journey.stats.topMonth.month,
+  );
+  const loadedPhotos = await Promise.all(photos.slice(0, 3).map((photo) => loadShareImage(photo.url)));
+
+  context.fillStyle = "#171715";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  const glow = context.createRadialGradient(1260, 280, 20, 1260, 280, 680);
+  glow.addColorStop(0, "rgba(168,70,50,.28)");
+  glow.addColorStop(1, "rgba(23,23,21,0)");
+  context.fillStyle = glow;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  context.fillStyle = "#a84632";
+  context.fillRect(70, 70, 70, 70);
+  context.fillStyle = "#fffaf0";
+  context.font = "800 22px Segoe UI, sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText("VR", 105, 106);
+
+  context.textAlign = "left";
+  context.fillStyle = "#f1ede5";
+  context.font = "800 22px Segoe UI, sans-serif";
+  context.fillText("VRCHAT RECAP", 164, 93);
+  context.fillStyle = "#a7a096";
+  context.font = "600 15px Segoe UI, sans-serif";
+  context.fillText(
+    `${new Date(journey.startDate).getFullYear()} — ${new Date(journey.endDate).getFullYear()}`,
+    164,
+    126,
+  );
+
+  context.fillStyle = "#fffaf0";
+  context.font = "400 67px Georgia, Noto Serif KR, Yu Mincho, serif";
+  const title = canvasText(context, t.shareCardTitle(selfName), 690);
+  context.fillText(title, 70, 230);
+  context.fillStyle = "#d5cec3";
+  context.font = "400 24px Segoe UI, sans-serif";
+  context.fillText(canvasText(context, t.recapLead(journey.stats.activeDays), 690), 72, 274);
+
+  context.fillStyle = "#fffaf0";
+  context.font = "400 118px Georgia, serif";
+  context.fillText(formatNumber(language, journey.totalPhotos), 70, 430);
+  context.fillStyle = "#d7836c";
+  context.font = "800 17px Segoe UI, sans-serif";
+  context.fillText(t.photoCount.toLocaleUpperCase(localeFor(language)), 76, 469);
+
+  const summary = [
+    {
+      label: t.topWorld,
+      value: topWorldResult
+        ? t.shareWorldValue(topWorld, topWorldResult.visitCount)
+        : topWorld,
+    },
+    {
+      label: t.specialLabel,
+      value: special
+        ? t.shareSpecialValue(specialName, special.pairPhotos)
+        : specialName,
+    },
+    {
+      label: t.topMonth,
+      value: t.shareMonthValue(topMonth, journey.stats.topMonth.photoCount),
+    },
+    {
+      label: t.activeDays,
+      value: formatNumber(language, journey.stats.activeDays),
+    },
+  ];
+  summary.forEach((item, index) => {
+    const column = index % 2;
+    const row = Math.floor(index / 2);
+    const x = 70 + column * 348;
+    const y = 540 + row * 118;
+    context.strokeStyle = "rgba(241,237,229,.18)";
+    context.strokeRect(x, y, 318, 90);
+    context.fillStyle = "#8f8980";
+    context.font = "700 13px Segoe UI, sans-serif";
+    context.fillText(canvasText(context, item.label, 278), x + 18, y + 27);
+    context.fillStyle = "#fffaf0";
+    context.font = "400 27px Georgia, Noto Serif KR, Yu Mincho, serif";
+    context.fillText(canvasText(context, item.value, 278), x + 18, y + 64);
+  });
+
+  const names = journey.stats.people.slice(0, 4).map((person) => person.displayName);
+  if (names.length) {
+    context.fillStyle = "#8f8980";
+    context.font = "700 13px Segoe UI, sans-serif";
+    context.fillText(t.topPeople, 70, 802);
+    context.fillStyle = "#d8d1c6";
+    context.font = "400 20px Segoe UI, sans-serif";
+    context.fillText(canvasText(context, names.join(" · "), 660), 70, 836);
+  }
+
+  const photoRects = [
+    [820, 70, 710, 430],
+    [820, 530, 340, 300],
+    [1190, 530, 340, 300],
+  ] as const;
+  loadedPhotos.forEach((image, index) => {
+    const [x, y, width, height] = photoRects[index];
+    context.fillStyle = "#f1ede5";
+    context.fillRect(x - 10, y - 10, width + 20, height + 42);
+    drawContainedImage(context, image, x, y, width, height);
+  });
+
+  context.fillStyle = "#a84632";
+  context.fillRect(820, 862, 710, 2);
+  context.fillStyle = "#8f8980";
+  context.font = "700 13px Segoe UI, sans-serif";
+  context.textAlign = "right";
+  context.fillText("#VRChatRecap", 1530, 850);
+
+  return await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => blob ? resolve(blob) : reject(new Error("Unable to encode the share card.")),
+      "image/png",
+    );
+  });
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
 async function readDirectory(handle: LocalDirectoryHandle): Promise<File[]> {
@@ -566,6 +829,10 @@ function Recap({
   onRestart: () => void;
 }) {
   const t = COPY[language];
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareStatus, setShareStatus] = useState<
+    "failed" | "preparing" | "saved" | "success" | null
+  >(null);
   const photos = useMemo(
     () => new Map(journey.photos.map((photo) => [photo.id, photo])),
     [journey.photos],
@@ -578,10 +845,113 @@ function Recap({
     .map((id) => photos.get(id))
     .filter((photo): photo is RecapPhoto => Boolean(photo));
   const special = journey.stats.specialPerson;
-  const specialPhotos = special?.photoIds
-    .map((id) => photos.get(id))
-    .filter((photo): photo is RecapPhoto => Boolean(photo)) ?? [];
+  const specialPhotos = useMemo(
+    () => special?.photoIds
+      .map((id) => photos.get(id))
+      .filter((photo): photo is RecapPhoto => Boolean(photo)) ?? [],
+    [photos, special],
+  );
   const selfName = journey.stats.self?.displayName;
+  const summaryPhotos = Array.from(new Map(
+    [
+      coverPhoto,
+      specialPhotos[0],
+      peakMonthPhoto,
+      timelinePhotos.at(-1),
+    ]
+      .filter((photo): photo is RecapPhoto => Boolean(photo))
+      .map((photo) => [photo.id, photo]),
+  ).values());
+  const specialName = special?.displayName ?? (special ? t.specialGeneric : undefined);
+  const topWorldResult = journey.stats.topWorlds[0];
+  const topWorld = topWorldResult?.displayName;
+  const topMonthValue = t.shareMonthValue(
+    formatMonth(
+      language,
+      journey.stats.topMonth.year,
+      journey.stats.topMonth.month,
+    ),
+    journey.stats.topMonth.photoCount,
+  );
+  const topWorldValue = topWorldResult
+    ? t.shareWorldValue(topWorldResult.displayName, topWorldResult.visitCount)
+    : t.noWorld;
+  const specialValue = special
+    ? t.shareSpecialValue(specialName ?? t.specialGeneric, special.pairPhotos)
+    : "—";
+  const rawShareMessage = t.sharePost(journey.totalPhotos, topWorld, specialName);
+  const shareMessage = rawShareMessage.length > 250
+    ? `${rawShareMessage.replace(/\s*#VRChatRecap$/, "").slice(0, 228).trim()}… #VRChatRecap`
+    : rawShareMessage;
+  const shareFileName = `vrchat-recap-${new Date(journey.endDate).getFullYear()}.png`;
+  const shareStatusText = shareStatus === "preparing"
+    ? t.sharePreparing
+    : shareStatus === "saved"
+      ? t.shareSaved
+      : shareStatus === "success"
+        ? t.shareSuccess
+        : shareStatus === "failed"
+          ? t.shareFailed
+          : null;
+
+  const saveShareImage = async () => {
+    if (shareBusy) return;
+    setShareBusy(true);
+    setShareStatus("preparing");
+    try {
+      const blob = await createShareCardBlob(journey, language, summaryPhotos);
+      downloadBlob(blob, shareFileName);
+      setShareStatus("saved");
+    } catch {
+      setShareStatus("failed");
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const shareImage = async () => {
+    if (shareBusy) return;
+    setShareBusy(true);
+    setShareStatus("preparing");
+    try {
+      const blob = await createShareCardBlob(journey, language, summaryPhotos);
+      const file = new File([blob], shareFileName, { type: "image/png" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          text: shareMessage,
+          title: t.shareCardTitle(selfName),
+        });
+        setShareStatus("success");
+      } else {
+        downloadBlob(blob, shareFileName);
+        setShareStatus("saved");
+      }
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === "AbortError") {
+        setShareStatus(null);
+      } else {
+        setShareStatus("failed");
+      }
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const openXShare = () => {
+    const parameters = new URLSearchParams({ text: shareMessage });
+    const isLocalHost = window.location.hostname === "localhost"
+      || window.location.hostname === "127.0.0.1";
+    if (!isLocalHost && /^https?:$/.test(window.location.protocol)) {
+      parameters.set("url", `${window.location.origin}${window.location.pathname}`);
+    }
+    window.open(
+      `https://twitter.com/intent/tweet?${parameters.toString()}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+    setShareStatus("success");
+  };
 
   return (
     <main className="recap-story" id="top">
@@ -779,11 +1149,92 @@ function Recap({
         </div>
       </section>
 
-      <section className="recap-ending">
-        <p>{formatDate(language, journey.startDate)} — {formatDate(language, journey.endDate)}</p>
-        <h2>{t.endingTitle}</h2>
-        <blockquote>{t.endingBody}</blockquote>
-        <button type="button" onClick={onRestart}>{t.chooseFolderAgain}</button>
+      <section className="recap-share-chapter">
+        <div className="share-chapter-heading">
+          <p>{t.shareLabel}</p>
+          <h2>{t.shareTitle}</h2>
+          <span>{t.shareBody}</span>
+        </div>
+
+        <div className="share-summary-card">
+          <div className="share-summary-copy">
+            <div className="share-summary-brand">
+              <i>VR</i>
+              <span>VRCHAT RECAP</span>
+            </div>
+            <p>{new Date(journey.startDate).getFullYear()} — {new Date(journey.endDate).getFullYear()}</p>
+            <h3>{t.shareCardTitle(selfName)}</h3>
+            <div className="share-primary-number">
+              <b>{formatNumber(language, journey.totalPhotos)}</b>
+              <span>{t.photoCount}</span>
+            </div>
+            <div className="share-result-grid">
+              <article>
+                <span>{t.activeDays}</span>
+                <b>{formatNumber(language, journey.stats.activeDays)}</b>
+              </article>
+              <article>
+                <span>{t.topMonth}</span>
+                <b>{topMonthValue}</b>
+              </article>
+              <article>
+                <span>{t.topWorld}</span>
+                <b>{topWorldValue}</b>
+              </article>
+              <article>
+                <span>{t.specialLabel}</span>
+                <b>{specialValue}</b>
+              </article>
+            </div>
+            {journey.stats.people.length > 0 && (
+              <div className="share-people">
+                <span>{t.topPeople}</span>
+                <p>{journey.stats.people.slice(0, 4).map((person) => person.displayName).join(" · ")}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="share-summary-photos" aria-label={t.galleryLabel}>
+            {summaryPhotos.slice(0, 3).map((photo, index) => (
+              <figure className={`share-photo-${index + 1}`} key={photo.id}>
+                <img src={photo.url} alt="" />
+              </figure>
+            ))}
+            <b>#VRChatRecap</b>
+          </div>
+        </div>
+
+        <div className="share-actions">
+          <button
+            className="share-native-button"
+            disabled={shareBusy}
+            onClick={() => void shareImage()}
+            type="button"
+          >
+            {t.shareImage}
+          </button>
+          <button
+            className="share-x-button"
+            disabled={shareBusy}
+            onClick={openXShare}
+            type="button"
+          >
+            <b>X</b>
+            {t.xShare}
+          </button>
+          <button
+            className="share-save-button"
+            disabled={shareBusy}
+            onClick={() => void saveShareImage()}
+            type="button"
+          >
+            {t.saveShareImage}
+          </button>
+          <button className="share-restart-button" type="button" onClick={onRestart}>
+            {t.chooseFolderAgain}
+          </button>
+        </div>
+        <p className="share-status" aria-live="polite">{shareStatusText}</p>
       </section>
     </main>
   );
