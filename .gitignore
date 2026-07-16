@@ -1,0 +1,10 @@
+# Personal screenshot corpus: never commit or upload it.
+/pictures/
+/vrchat pictures2026/
+
+# The web app manages its own generated files.
+/web/node_modules/
+/web/.next/
+/web/dist/
+/web/.wrangler/
+/web/dev.*.log
