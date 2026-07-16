@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, stat } from "node:fs/promises";
+import { access, readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
 async function render(path = "/") {
@@ -14,172 +14,133 @@ async function render(path = "/") {
   );
 }
 
-test("renders the private recap on its own page", async () => {
+test("renders the photo-first recap in Korean by default", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
-
   const html = await response.text();
   assert.match(html, /<html lang="ko">/i);
-  assert.match(html, /VRChat Recap/i);
-  assert.match(html, /스크린샷 폴더 고르기/);
-  assert.match(html, /내 사진 기억 샘플 보기/);
-  assert.match(html, /업로드하지 않아요/);
-  assert.match(html, /학습에 쓰지 않아요/);
+  assert.match(html, /사진 속에 남은/);
+  assert.match(html, /우리의 시간/);
+  assert.match(html, /사진 폴더 고르기/);
+  assert.match(html, /한국어/);
+  assert.match(html, /English/);
+  assert.match(html, /日本語/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
-test("serves the memory walk from a separate game route", async () => {
+test("removes the game route, game code, and game assets", async () => {
   const response = await render("/game");
-  assert.equal(response.status, 200);
-  const html = await response.text();
-  assert.match(html, /MEMORY WALK/);
+  assert.equal(response.status, 404);
+  await assert.rejects(access(new URL("../app/MemoryGame.tsx", import.meta.url)));
+  await assert.rejects(access(new URL("../app/game/page.tsx", import.meta.url)));
+  await assert.rejects(access(new URL("../app/lib/gameSession.ts", import.meta.url)));
+  await assert.rejects(access(new URL("../public/game", import.meta.url)));
 
-  const [page, recap, session] = await Promise.all([
-    readFile(new URL("../app/game/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/lib/gameSession.ts", import.meta.url), "utf8"),
-  ]);
-  assert.match(page, /<MemoryGame/);
-  assert.match(page, /sessionStorage\.getItem\(GAME_SESSION_KEY\)/);
-  assert.match(page, /createPublicSampleJourney\(\)/);
-  assert.match(recap, /window\.location\.assign\("\/game"\)/);
-  assert.match(session, /vrchat-recap\/memory-walk\/v5/);
-  assert.match(session, /previewUrl: undefined/);
+  const app = await readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(app, /MemoryGame|GAME_SESSION|window\.location\.assign\("\/game"\)|platformer|game controls/i);
 });
 
-test("ships a redacted public sample made from every local photo", async () => {
-  const [rawSample, adapter] = await Promise.all([
-    readFile(new URL("../app/data/personal-sample.json", import.meta.url), "utf8"),
-    readFile(new URL("../app/lib/personalSample.ts", import.meta.url), "utf8"),
-  ]);
-  const sample = JSON.parse(rawSample);
-
-  assert.equal(sample.schema, "vrchat-public-memory-sample/v1");
-  assert.equal(sample.totalFiles, 4986);
-  assert.equal(sample.decodedPhotos, 4986);
-  assert.equal(sample.skippedPhotos, 0);
-  assert.equal(sample.moments.length, 9);
-  assert.equal(sample.moments.reduce((sum, moment) => sum + moment.photoCount, 0), 4986);
-  assert.deepEqual(
-    [...new Set(sample.moments.map((moment) => new Date(moment.date).getFullYear()))],
-    [2018, 2019, 2026],
-  );
-  for (const moment of sample.moments) {
-    assert.equal(moment.memoryPixels.length, 432);
-    assert.ok(moment.memoryPixels.every((value) => Number.isInteger(value) && value >= 0 && value <= 15));
-  }
-  assert.equal(sample.privacy.originalPixelsIncluded, false);
-  assert.equal(sample.privacy.filenamesIncluded, false);
-  assert.equal(sample.privacy.worldNamesIncluded, false);
-  assert.equal(sample.privacy.playerNamesIncluded, false);
-  assert.doesNotMatch(rawSample, /VRChat_|wrld_|usr_|instanceId/i);
-  assert.match(adapter, /원본을 공개하지 않고 기억 색상만 남겼어요/);
-  assert.match(adapter, /companionNames: \[\]/);
+test("keeps technical model language out of every user-facing recap string", async () => {
+  const app = await readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(app, /MediaPipe|EfficientDet|BlazeFace|ObjectDetector|FaceDetector|LOCAL MODEL|AI PASS|로컬 모델|로컬 AI|양자화|익명화|추론 엔진/i);
+  assert.match(app, /YOUR PHOTOS · YOUR PEOPLE · YOUR WORLDS/);
+  assert.match(app, /둘만 남긴 순간을 발견했어요/);
+  assert.match(app, /A memory of just the two of you/);
+  assert.match(app, /ふたりだけで残した一枚/);
 });
 
-test("analyzes every image locally with bounded working memory", async () => {
-  const [app, analyzer, pngMetadata, packageJson] = await Promise.all([
+test("supports Korean, English, and Japanese without translating metadata values", async () => {
+  const app = await readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8");
+  assert.match(app, /type Language = "ko" \| "en" \| "ja"/);
+  assert.match(app, /LANGUAGE_STORAGE_KEY/);
+  assert.match(app, /navigator\.language/);
+  assert.match(app, /document\.documentElement\.lang = next/);
+  assert.match(app, /photo\.worldName/);
+  assert.match(app, /photo\.nicknames\.join\(" · "\)/);
+  assert.match(app, /new Intl\.DateTimeFormat\(localeFor\(language\)/);
+});
+
+test("shows real photos, names, worlds, and discoveries while processing", async () => {
+  const [app, analyzer] = await Promise.all([
     readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/memory.ts", import.meta.url), "utf8"),
-    readFile(new URL("../app/lib/pngMetadata.ts", import.meta.url), "utf8"),
-    readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
-
-  assert.match(app, /showDirectoryPicker/);
-  assert.match(app, /webkitdirectory/);
-  assert.match(app, /async function readDirectory\(handle: LocalDirectoryHandle\)/);
-  assert.match(app, /const nestedFiles = await readDirectory\(directory\)/);
-  assert.match(analyzer, /const MAX_MOMENTS = 64/);
-  assert.match(analyzer, /for \(let index = 0; index < files\.length; index \+= 1\)/);
-  assert.match(analyzer, /createImageBitmap/);
-  assert.match(analyzer, /resizeWidth: 48/);
-  assert.match(analyzer, /resizeHeight: 27/);
-  assert.match(analyzer, /bitmap\.close\(\)/);
-  assert.match(analyzer, /const quantizedPixels: number\[\] = \[\]/);
-  assert.match(analyzer, /function aggregateMemoryPixels\(photos: PhotoMeta\[\]\)/);
-  assert.match(analyzer, /memoryPixels: aggregateMemoryPixels\(session\.photos\)/);
-  assert.match(analyzer, /schema: "vrchat-recap\/v5"/);
-  assert.match(analyzer, /readEmbeddedPhotoMetadata/);
-  assert.match(pngMetadata, /PNG_METADATA_PREFIX_BYTES = 64 \* 1024/);
-  assert.match(pngMetadata, /if \(type === "IDAT" \|\| dataEnd \+ 4 > bytes\.length\) break/);
-  assert.doesNotMatch(`${app}\n${analyzer}\n${pngMetadata}`, /\bfetch\s*\(/);
-  assert.doesNotMatch(packageJson, /react-loading-skeleton/);
+  assert.match(analyzer, /photo: \{/);
+  assert.match(analyzer, /file,/);
+  assert.match(analyzer, /nicknames: participants\.map/);
+  assert.match(analyzer, /worldName: record\.worldName/);
+  assert.match(analyzer, /discoveries\.photosWithTwoPeople/);
+  assert.match(app, /URL\.createObjectURL\(photo\.file\)/);
+  assert.match(app, /loading-filmstrip/);
+  assert.match(app, /current\.nicknames\.join\(" · "\)/);
+  assert.match(app, /progress\.discoveries\.topNames/);
 });
 
-test("ships a same-origin local model and joins avatar changes by VRChat user id", async () => {
-  const [app, analyzer, localVision, packageJson, model, wasm] = await Promise.all([
-    readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8"),
+test("infers self and the standout two-person relationship from metadata", async () => {
+  const [analyzer, metadata] = await Promise.all([
+    readFile(new URL("../app/lib/memory.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/pngMetadata.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(metadata, /value\.world\?\.displayName \?\? value\.world\?\.name/);
+  assert.match(metadata, /players/);
+  assert.match(analyzer, /add\(metadata\.authorId, metadata\.authorName\)/);
+  assert.match(analyzer, /metadata\.players\.forEach/);
+  assert.match(analyzer, /sort\(\(a, b\) => b\.photoCount - a\.photoCount/);
+  assert.match(analyzer, /photo\.participants\.length !== 2/);
+  assert.match(analyzer, /pairPhotosByPerson/);
+  assert.match(analyzer, /specialMetadataEntry/);
+  assert.match(analyzer, /displayName: specialMetadataPerson\.name/);
+});
+
+test("falls back to metadata when face processing is unavailable and uses recurring faces when metadata is absent", async () => {
+  const [analyzer, localVision, packageJson, model, wasm] = await Promise.all([
     readFile(new URL("../app/lib/memory.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/localVision.ts", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
-    stat(new URL("../public/models/efficientdet_lite0_uint8.tflite", import.meta.url)),
+    stat(new URL("../public/models/blaze_face_short_range.tflite", import.meta.url)),
     stat(new URL("../public/mediapipe/wasm/vision_wasm_internal.wasm", import.meta.url)),
   ]);
 
   assert.match(packageJson, /@mediapipe\/tasks-vision/);
+  assert.match(localVision, /FaceDetector\.createFromOptions/);
+  assert.match(localVision, /modelAssetPath: "\/models\/blaze_face_short_range\.tflite"/);
   assert.match(localVision, /FilesetResolver\.forVisionTasks\("\/mediapipe\/wasm"\)/);
-  assert.match(localVision, /modelAssetPath: "\/models\/efficientdet_lite0_uint8\.tflite"/);
-  assert.match(localVision, /ObjectDetector\.createFromOptions/);
-  assert.match(localVision, /resizeWidth: 640/);
-  assert.match(localVision, /detector\.detect\(bitmap\)/);
-  assert.match(localVision, /bitmap\.close\(\)/);
+  assert.match(localVision, /descriptor/);
+  assert.match(localVision, /mirroredDescriptor/);
   assert.doesNotMatch(localVision, /https?:\/\//);
-  assert.ok(model.size > 4_000_000);
+  assert.ok(model.size > 200_000);
   assert.ok(wasm.size > 9_000_000);
 
-  assert.match(analyzer, /createLocalAvatarDetector\(\)/);
-  assert.match(analyzer, /const key = personKey\(player\.id, player\.displayName\)/);
-  assert.match(analyzer, /return id \|\| `name:/);
-  assert.match(analyzer, /hasStrongVisualEvidence/);
-  assert.match(analyzer, /visualEvidencePhotos/);
-  assert.match(app, /아바타를 바꿔도 같은 사람으로 이어집니다/);
-  assert.match(app, /AI 근거/);
+  assert.match(analyzer, /try \{\s*faceDetector = await createLocalFaceDetector\(\);\s*\} catch \{\s*faceDetector = null;/s);
+  assert.match(analyzer, /faceDetector && participants\.length === 0/);
+  assert.match(analyzer, /assignFaceClusters/);
+  assert.match(analyzer, /validFaceClusters/);
+  assert.match(analyzer, /const inferredSelfFace = self \? undefined : validFaceClusters\[0\]/);
+  assert.match(analyzer, /facePairPhotos/);
+  assert.match(analyzer, /inference: "faces"/);
 });
 
-test("builds a new local pixel sprite from the supplied avatar", async () => {
-  const app = await readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8");
-  assert.match(app, /async function createAvatarPixelSprite\(file: File\)/);
-  assert.match(app, /sheet\.width = AVATAR_CELL_WIDTH \* 4/);
-  assert.match(app, /sheet\.height = AVATAR_CELL_HEIGHT \* 3/);
-  assert.match(app, /const enqueue = \(pixel: number\)/);
-  assert.match(app, /const averageRegion =/);
-  assert.match(app, /const featureHash|let featureHash/);
-  assert.match(app, /The photo contributes only a compact palette and feature hash/);
-  assert.match(app, /baseContext\.fillRect/);
-  assert.doesNotMatch(app, /baseContext\.drawImage\(source/);
-  assert.match(app, /return sheet\.toDataURL\("image\/png"\)/);
-  assert.doesNotMatch(app, /drawImage\(avatar[^\n]*existing|face insertion/i);
-});
-
-test("turns memory colors into a hands-free walk without platformer rules", async () => {
-  const game = await readFile(new URL("../app/MemoryGame.tsx", import.meta.url), "utf8");
-  for (const era of ["FIRST LOGIN", "MIDNIGHT PLAZA", "PORTAL GARDEN", "MEMORY LINE", "STAR ARCHIVE", "FESTIVAL CLOUD", "RAINY ROOFTOP", "SNOW GLOBE", "SUNRISE LOBBY"]) {
-    assert.match(game, new RegExp(era));
-  }
-  assert.match(game, /world-atlas-v2\.png/);
-  assert.match(game, /function drawMemoryComposite/);
-  assert.match(game, /function drawPixelPostcard/);
-  assert.match(game, /elapsedRef\.current \+= delta \* speedRef\.current/);
-  assert.match(game, /const holdAtSunrise = 4/);
-  assert.match(game, /pausedRef/);
-  assert.match(game, /자동으로 기억 속을 걷고 있어요/);
-  assert.doesNotMatch(game, /jumpVelocity|maxJumps|buildMemoryPlatforms|landingPlatform|game over|clear state/iu);
-  const atlas = await stat(new URL("../public/game/world-atlas-v2.png", import.meta.url));
-  assert.ok(atlas.size > 100_000);
-});
-
-test("uses explicit VRChat metadata and a conservative recurring-friend rule", async () => {
-  const [game, analyzer, pngMetadata] = await Promise.all([
-    readFile(new URL("../app/MemoryGame.tsx", import.meta.url), "utf8"),
+test("uses original selected photos while keeping memory bounded", async () => {
+  const [app, analyzer, css] = await Promise.all([
+    readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/memory.ts", import.meta.url), "utf8"),
-    readFile(new URL("../app/lib/pngMetadata.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
-  assert.match(pngMetadata, /vrc:WorldDisplayName/);
-  assert.match(pngMetadata, /value\.world\?\.displayName \?\? value\.world\?\.name/);
-  assert.match(pngMetadata, /players/);
-  assert.match(analyzer, /value\.instances\.size >= 3 && value\.days\.size >= 2/);
-  assert.match(analyzer, /metadata\.authorId/);
-  assert.match(game, /moment\.companionNames\.slice\(0, 2\)/);
-  assert.match(game, /moment\.companionNames\.length === 0/);
+  assert.match(analyzer, /MAX_TIMELINE_PHOTOS = 18/);
+  assert.match(analyzer, /MAX_SPECIAL_PHOTOS = 6/);
+  assert.match(analyzer, /selectedRecords = new Map/);
+  assert.match(analyzer, /URL\.createObjectURL\(photo\.file\)/);
+  assert.match(analyzer, /URL\.revokeObjectURL/);
+  assert.match(app, /previewsRef\.current\.slice\(7\)/);
+  assert.match(css, /object-fit: contain/);
+});
+
+test("supports recursive folder selection and the browser folder-input fallback", async () => {
+  const app = await readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8");
+  assert.match(app, /showDirectoryPicker/);
+  assert.match(app, /async function readDirectory\(handle: LocalDirectoryHandle\)/);
+  assert.match(app, /files\.push\(\.\.\.await readDirectory\(directory\)\)/);
+  assert.match(app, /webkitdirectory/);
+  assert.match(app, /multiple/);
 });

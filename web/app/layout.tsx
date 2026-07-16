@@ -4,33 +4,51 @@ import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const host = requestHeaders.get("x-forwarded-host")
+    ?? requestHeaders.get("host")
+    ?? "localhost:3000";
+  const protocol = requestHeaders.get("x-forwarded-proto")
+    ?? (host.startsWith("localhost") ? "http" : "https");
   const origin = `${protocol}://${host}`;
-  const title = "VRChat Recap — 당신의 추억이 게임이 됩니다";
-  const description = "스크린샷 폴더를 로컬에서 정리해 개인 통계 recap과 아홉 스테이지의 시간 여행 게임으로 바꿉니다.";
+  const title = "VRChat Recap — 사진 속에 남은 우리의 시간";
+  const description = "VRChat 스크린샷 속 월드와 사람, 오래 이어진 인연을 원본 사진으로 다시 만나는 개인 Recap.";
 
   return {
-    title: { default: title, template: "%s · VRChat Recap" },
-    description,
     applicationName: "VRChat Recap",
+    description,
+    metadataBase: new URL(origin),
     openGraph: {
-      type: "website",
-      title,
       description,
-      images: [{ url: `${origin}/og.png`, width: 1733, height: 909, alt: "VRChat Recap의 여러 시대를 걷는 픽셀 아트 장면" }],
+      images: [{
+        alt: "VRChat 사진이 펼쳐진 감성적인 추억 앨범",
+        height: 909,
+        url: "/og-memory-recap.png",
+        width: 1730,
+      }],
+      title,
+      type: "website",
     },
-    twitter: { card: "summary_large_image", title, description, images: [`${origin}/og.png`] },
+    title,
+    twitter: {
+      card: "summary_large_image",
+      description,
+      images: ["/og-memory-recap.png"],
+      title,
+    },
   };
 }
 
 export const viewport: Viewport = {
-  width: "device-width",
   initialScale: 1,
-  themeColor: "#17142e",
+  themeColor: "#171715",
+  width: "device-width",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="ko">
       <body>{children}</body>
