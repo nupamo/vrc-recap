@@ -968,6 +968,18 @@ function Intro({
           </article>
         ))}
       </section>
+      <footer className="recap-footer intro-footer">
+        <p>
+          © {new Date().getFullYear()}{' '}
+          <a
+            href="https://x.com/nupamo"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            nupamo
+          </a>
+        </p>
+      </footer>
     </main>
   )
 }

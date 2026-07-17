@@ -28,6 +28,7 @@ test("renders the photo-first recap in English by default", async () => {
   assert.match(html, /日本語/);
   assert.match(html, /Your photos are never sent to a server/);
   assert.match(html, /vrc-recap-mark\.png/);
+  assert.match(html, /<footer class="recap-footer intro-footer">[\s\S]*©[\s\S]*href="https:\/\/x\.com\/nupamo"/);
   assert.match(html, /googletagmanager\.com\/gtag\/js\?id=G-SYEWNRRSVM/);
   assert.match(html, /gtag\('config', 'G-SYEWNRRSVM'\)/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
@@ -115,8 +116,8 @@ test("uses smaller CJK display type and phrase-aware wrapping", async () => {
 
   assert.match(css, /html:lang\(ko\) body,[\s\S]*html:lang\(ja\) body \{[\s\S]*line-break: strict;[\s\S]*word-break: keep-all;/);
   assert.match(css, /@supports \(word-break: auto-phrase\)[\s\S]*word-break: auto-phrase;/);
-  assert.match(css, /html:lang\(ko\) \.memory-hero h1 \{[\s\S]*font-size: clamp\(54px, 6\.5vw, 112px\)/);
-  assert.match(css, /html:lang\(ja\) \.memory-hero h1 \{[\s\S]*font-size: clamp\(50px, 6\.6vw, 104px\)/);
+  assert.match(css, /html:lang\(ko\) \.memory-hero h1 \{[\s\S]*font-size: clamp\(54px, 6vw, 90px\)/);
+  assert.match(css, /html:lang\(ja\) \.memory-hero h1 \{[\s\S]*font-size: clamp\(50px, 5vw, 80px\)/);
   assert.match(css, /html:lang\(ko\) \.share-summary-copy h3 \{[\s\S]*white-space: normal;/);
   assert.match(css, /html:lang\(ja\) \.share-summary-copy h3 \{[\s\S]*white-space: normal;/);
   assert.match(app, /const shareTitleFontSize =[\s\S]*language === 'en' \? 67 : language === 'ko' \? 59 : 54/);
