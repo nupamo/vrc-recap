@@ -3,13 +3,17 @@ import {
   type EmbeddedPhotoMetadata,
 } from "./pngMetadata";
 import {
-  createLocalFaceDetector,
-  type LocalFaceDetector,
-  type LocalFaceSample,
+  createLocalVisualAnalyzer,
+  type LocalVisualAnalyzer,
+  type LocalVisualSubject,
 } from "./localVision";
 import {
   inferMetadataPeople,
   inferRecurringFaces,
+  inferRecurringScenes,
+  inferTemporalScenes,
+  selectSceneResults,
+  summarizeRecapPeriods,
 } from "./recapInference";
 
 export type AnalysisPhoto = {
@@ -17,15 +21,18 @@ export type AnalysisPhoto = {
   file: File;
   nicknames: string[];
   twoPersonMoment: boolean;
+  visualSubjects: number;
   worldName?: string;
 };
 
 export type AnalysisProgress = {
   current: number;
   discoveries: {
+    daysWithTwoPeople: number;
     people: number;
-    photosWithTwoPeople: number;
     topNames: string[];
+    visualPeople: number;
+    visualPlaces: number;
     worlds: number;
   };
   photo?: AnalysisPhoto;
@@ -39,6 +46,8 @@ export type RecapPhoto = {
   id: string;
   nicknames: string[];
   url: string;
+  visualSceneRank?: number;
+  visualSubjects: number;
   worldName?: string;
 };
 
@@ -54,19 +63,33 @@ export type MonthRecap = {
   year: number;
 };
 
+export type DayRecap = {
+  day: number;
+  month: number;
+  photoCount: number;
+  year: number;
+};
+
 export type WorldRecap = {
-  displayName: string;
+  activeDays: number;
+  displayName?: string;
+  id: string;
+  inference: "metadata" | "temporal" | "visual";
+  month?: number;
   photoCount: number;
   photoId?: string;
-  visitCount: number;
+  year?: number;
 };
 
 export type PersonRecap = {
   activeDays: number;
-  displayName: string;
+  displayName?: string;
   firstDate: string;
+  id: string;
+  inference: "metadata" | "visual";
   lastDate: string;
-  pairPhotos: number;
+  pairDays: number;
+  photoId?: string;
   photoCount: number;
 };
 
@@ -74,40 +97,44 @@ export type SpecialPersonRecap = {
   activeDays: number;
   displayName?: string;
   firstDate: string;
-  inference: "metadata" | "faces";
+  inference: "metadata" | "visual";
   lastDate: string;
-  pairPhotos: number;
+  pairDays: number;
   photoIds: string[];
   topWorld?: string;
 };
 
 export type MemoryJourney = {
   analysis: {
-    faceAnalysisAvailable: boolean;
-    faceAnalyzedPhotos: number;
     metadataPhotos: number;
-    mode: "metadata" | "mixed" | "faces" | "photos";
+    mode: "metadata" | "mixed" | "photos" | "visual";
+    visualAnalysisAvailable: boolean;
+    visualAnalyzedPhotos: number;
   };
   coverPhotoId: string;
   endDate: string;
   generatedAt: string;
-  peakMonthPhotoId?: string;
+  peakPeriodPhotoId?: string;
   photos: RecapPhoto[];
-  schema: "vrchat-recap/v6";
+  schema: "vrchat-recap/v11";
   startDate: string;
   stats: {
     activeDays: number;
+    activeMonths: number;
     activeYears: YearRecap[];
     people: PersonRecap[];
-    recurringFaces: number;
+    recurringPeople: number;
     self?: {
       displayName?: string;
-      inference: "metadata" | "faces";
+      inference: "metadata" | "visual";
+      photoId?: string;
       photoCount: number;
     };
     specialPerson?: SpecialPersonRecap;
+    topDay: DayRecap;
+    topHour: number;
     topMonth: MonthRecap;
-    topSeason: number;
+    topPeriod: "day" | "month";
     topWorlds: WorldRecap[];
   };
   timelinePhotoIds: string[];
@@ -121,30 +148,48 @@ type Participant = {
 
 type PhotoRecord = {
   date: Date;
-  faceClusterIds: string[];
   file: File;
   id: string;
   metadata: EmbeddedPhotoMetadata | null;
   participants: Participant[];
+  sceneClusterId?: string;
+  selfieScore: number;
+  subjectClusterIds: string[];
   worldName?: string;
 };
 
-type FaceCluster = {
+type VisualCluster = {
   centroid: number[];
   count: number;
   days: Set<string>;
   id: string;
   photoIds: Set<string>;
+  source?: LocalVisualSubject["source"];
 };
 
 type WorldAccumulator = {
+  days: Set<string>;
   displayName: string;
+  id: string;
   instances: Set<string>;
   photos: PhotoRecord[];
 };
 
+type RankedWorldEntry = {
+  activeDays: number;
+  displayName?: string;
+  id: string;
+  inference: "metadata" | "temporal" | "visual";
+  month?: number;
+  photos: PhotoRecord[];
+  year?: number;
+};
+
 const IMAGE_EXTENSION = /\.(?:avif|bmp|gif|heic|heif|jpe?g|png|webp)$/i;
-const FACE_CLUSTER_THRESHOLD = 0.235;
+const SUBJECT_CLUSTER_THRESHOLD = 0.34;
+const SCENE_CLUSTER_THRESHOLD = 0.32;
+const MAX_SUBJECT_CLUSTERS = 512;
+const MAX_SCENE_CLUSTERS = 512;
 const MAX_TIMELINE_PHOTOS = 18;
 const MAX_SPECIAL_PHOTOS = 6;
 
@@ -202,66 +247,171 @@ function participantsFromMetadata(metadata: EmbeddedPhotoMetadata | null): Parti
 
 function descriptorDistance(left: number[], right: number[]): number {
   if (!left.length || left.length !== right.length) return Number.POSITIVE_INFINITY;
-  let sum = 0;
+  let dot = 0;
+  let leftMagnitude = 0;
+  let rightMagnitude = 0;
   for (let index = 0; index < left.length; index += 1) {
-    const delta = left[index] - right[index];
-    sum += delta * delta;
+    dot += left[index] * right[index];
+    leftMagnitude += left[index] * left[index];
+    rightMagnitude += right[index] * right[index];
   }
-  return Math.sqrt(sum / left.length);
+  if (!leftMagnitude || !rightMagnitude) return Number.POSITIVE_INFINITY;
+  return 1 - dot / Math.sqrt(leftMagnitude * rightMagnitude);
 }
 
-function assignFaceClusters(
-  faces: LocalFaceSample[],
-  clusters: FaceCluster[],
+function updateCluster(
+  cluster: VisualCluster,
+  descriptor: number[],
+  photoId: string,
+  day: string,
+) {
+  cluster.count += 1;
+  const weight = 1 / cluster.count;
+  cluster.centroid = cluster.centroid.map(
+    (value, index) => value * (1 - weight) + descriptor[index] * weight,
+  );
+  cluster.photoIds.add(photoId);
+  cluster.days.add(day);
+}
+
+function assignSubjectClusters(
+  subjects: LocalVisualSubject[],
+  clusters: VisualCluster[],
   photoId: string,
   date: Date,
 ): string[] {
   const assigned = new Set<string>();
   const day = localDayKey(date);
 
-  for (const face of faces) {
-    let bestCluster: FaceCluster | undefined;
-    let bestDescriptor = face.descriptor;
+  for (const subject of subjects) {
+    let bestCluster: VisualCluster | undefined;
     let bestDistance = Number.POSITIVE_INFINITY;
 
     for (const cluster of clusters) {
-      if (assigned.has(cluster.id)) continue;
-      const normalDistance = descriptorDistance(face.descriptor, cluster.centroid);
-      const mirroredDistance = descriptorDistance(face.mirroredDescriptor, cluster.centroid);
-      const distance = Math.min(normalDistance, mirroredDistance);
+      if (assigned.has(cluster.id) || cluster.source !== subject.source) continue;
+      const distance = descriptorDistance(subject.descriptor, cluster.centroid);
       if (distance < bestDistance) {
         bestDistance = distance;
         bestCluster = cluster;
-        bestDescriptor = mirroredDistance < normalDistance
-          ? face.mirroredDescriptor
-          : face.descriptor;
       }
     }
 
-    if (!bestCluster || bestDistance > FACE_CLUSTER_THRESHOLD) {
-      const cluster: FaceCluster = {
-        centroid: [...face.descriptor],
+    if (!bestCluster || bestDistance > SUBJECT_CLUSTER_THRESHOLD) {
+      if (clusters.length >= MAX_SUBJECT_CLUSTERS) continue;
+      const cluster: VisualCluster = {
+        centroid: [...subject.descriptor],
         count: 1,
         days: new Set([day]),
-        id: `face-${clusters.length + 1}`,
+        id: `subject-${clusters.length + 1}`,
         photoIds: new Set([photoId]),
+        source: subject.source,
       };
       clusters.push(cluster);
       assigned.add(cluster.id);
       continue;
     }
 
-    bestCluster.count += 1;
-    const weight = 1 / bestCluster.count;
-    bestCluster.centroid = bestCluster.centroid.map(
-      (value, index) => value * (1 - weight) + bestDescriptor[index] * weight,
-    );
-    bestCluster.photoIds.add(photoId);
-    bestCluster.days.add(day);
+    updateCluster(bestCluster, subject.descriptor, photoId, day);
     assigned.add(bestCluster.id);
   }
 
   return Array.from(assigned);
+}
+
+function assignSceneCluster(
+  descriptor: number[],
+  clusters: VisualCluster[],
+  photoId: string,
+  date: Date,
+): string | undefined {
+  if (!descriptor.length) return undefined;
+  const day = localDayKey(date);
+  let bestCluster: VisualCluster | undefined;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const cluster of clusters) {
+    const distance = descriptorDistance(descriptor, cluster.centroid);
+    if (distance < bestDistance) {
+      bestCluster = cluster;
+      bestDistance = distance;
+    }
+  }
+
+  if (!bestCluster || bestDistance > SCENE_CLUSTER_THRESHOLD) {
+    if (clusters.length >= MAX_SCENE_CLUSTERS) return undefined;
+    const cluster: VisualCluster = {
+      centroid: [...descriptor],
+      count: 1,
+      days: new Set([day]),
+      id: `scene-${clusters.length + 1}`,
+      photoIds: new Set([photoId]),
+    };
+    clusters.push(cluster);
+    return cluster.id;
+  }
+
+  updateCluster(bestCluster, descriptor, photoId, day);
+  return bestCluster.id;
+}
+
+function isSelfAlone(
+  photo: PhotoRecord,
+  metadataSelfKey?: string,
+  visualSelfId?: string,
+): boolean {
+  if (metadataSelfKey) {
+    return photo.participants.length === 1
+      && photo.participants[0].key === metadataSelfKey;
+  }
+  return Boolean(
+    visualSelfId
+    && photo.subjectClusterIds.length === 1
+    && photo.subjectClusterIds[0] === visualSelfId,
+  );
+}
+
+function representativePhoto(
+  photos: PhotoRecord[],
+  metadataSelfKey?: string,
+  visualSelfId?: string,
+): PhotoRecord {
+  const midpoint = (photos.length - 1) / 2;
+  return photos.reduce((best, photo, index) => {
+    const photoIsSelfAlone = isSelfAlone(photo, metadataSelfKey, visualSelfId);
+    const bestIsSelfAlone = isSelfAlone(best.photo, metadataSelfKey, visualSelfId);
+    if (photoIsSelfAlone !== bestIsSelfAlone) {
+      return photoIsSelfAlone ? { index, photo } : best;
+    }
+    const scoreDifference = photo.selfieScore - best.photo.selfieScore;
+    if (scoreDifference > 0.0001) return { index, photo };
+    if (scoreDifference < -0.0001) return best;
+    if (photo.subjectClusterIds.length > best.photo.subjectClusterIds.length) {
+      return { index, photo };
+    }
+    return Math.abs(index - midpoint) < Math.abs(best.index - midpoint)
+      ? { index, photo }
+      : best;
+  }, { index: 0, photo: photos[0] }).photo;
+}
+
+function sampleRepresentativePhotos(
+  photos: PhotoRecord[],
+  limit: number,
+  metadataSelfKey?: string,
+  visualSelfId?: string,
+): PhotoRecord[] {
+  if (photos.length <= limit) return [...photos];
+  const selected: PhotoRecord[] = [];
+  for (let index = 0; index < limit; index += 1) {
+    const start = Math.floor((index * photos.length) / limit);
+    const end = Math.max(start + 1, Math.floor(((index + 1) * photos.length) / limit));
+    selected.push(representativePhoto(
+      photos.slice(start, end),
+      metadataSelfKey,
+      visualSelfId,
+    ));
+  }
+  return selected.sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
 function sampleEvenly<T>(items: T[], limit: number): T[] {
@@ -271,10 +421,6 @@ function sampleEvenly<T>(items: T[], limit: number): T[] {
     selected.push(items[Math.round((index * (items.length - 1)) / (limit - 1))]);
   }
   return selected;
-}
-
-function representativePhoto(photos: PhotoRecord[]): PhotoRecord {
-  return photos[Math.floor((photos.length - 1) / 2)];
 }
 
 function topEntries(map: Map<string, number>, limit: number): string[] {
@@ -293,23 +439,18 @@ function buildWorlds(photos: PhotoRecord[]): Map<string, WorldAccumulator> {
     const fallbackInstance = `${key}|${localDayKey(photo.date)}|${Math.floor(photo.date.getHours() / 4)}`;
     const instance = metadata?.instanceId || fallbackInstance;
     const entry = worlds.get(key) ?? {
+      days: new Set<string>(),
       displayName: photo.worldName,
+      id: key,
       instances: new Set<string>(),
       photos: [],
     };
+    entry.days.add(localDayKey(photo.date));
     entry.instances.add(instance);
     entry.photos.push(photo);
     worlds.set(key, entry);
   }
   return worlds;
-}
-
-function seasonIndex(date: Date): number {
-  const month = date.getMonth() + 1;
-  if (month >= 3 && month <= 5) return 0;
-  if (month >= 6 && month <= 8) return 1;
-  if (month >= 9 && month <= 11) return 2;
-  return 3;
 }
 
 export function parseScreenshotDate(name: string, lastModified: number): Date {
@@ -346,9 +487,11 @@ export async function analyzeFiles(
   if (!files.length) throw new Error("No image files were found.");
 
   const discoveries = {
+    daysWithTwoPeople: 0,
     people: 0,
-    photosWithTwoPeople: 0,
     topNames: [] as string[],
+    visualPeople: 0,
+    visualPlaces: 0,
     worlds: 0,
   };
   onProgress({
@@ -358,19 +501,21 @@ export async function analyzeFiles(
     total: files.length,
   });
 
-  let faceDetector: LocalFaceDetector | null = null;
+  let visualAnalyzer: LocalVisualAnalyzer | null = null;
   try {
-    faceDetector = await createLocalFaceDetector();
+    visualAnalyzer = await createLocalVisualAnalyzer();
   } catch {
-    faceDetector = null;
+    visualAnalyzer = null;
   }
 
   const records: PhotoRecord[] = [];
-  const faceClusters: FaceCluster[] = [];
+  const subjectClusters: VisualCluster[] = [];
+  const sceneClusters: VisualCluster[] = [];
   const nameCounts = new Map<string, number>();
+  const twoPersonDays = new Set<string>();
   const worldNames = new Set<string>();
   let metadataPhotos = 0;
-  let faceAnalyzedPhotos = 0;
+  let visualAnalyzedPhotos = 0;
 
   try {
     for (let index = 0; index < files.length; index += 1) {
@@ -390,24 +535,32 @@ export async function analyzeFiles(
       const participants = participantsFromMetadata(metadata);
       const record: PhotoRecord = {
         date,
-        faceClusterIds: [],
         file,
         id: `photo-${index + 1}`,
         metadata,
         participants,
+        selfieScore: 0,
+        subjectClusterIds: [],
         worldName: metadata?.worldName,
       };
 
-      if (faceDetector && participants.length === 0) {
+      if (visualAnalyzer) {
         try {
-          const result = await faceDetector.analyze(file);
-          record.faceClusterIds = assignFaceClusters(
-            result.faces,
-            faceClusters,
+          const result = await visualAnalyzer.analyze(file);
+          record.selfieScore = result.selfieScore;
+          record.subjectClusterIds = assignSubjectClusters(
+            result.subjects,
+            subjectClusters,
             record.id,
             date,
           );
-          faceAnalyzedPhotos += 1;
+          record.sceneClusterId = assignSceneCluster(
+            result.sceneDescriptor,
+            sceneClusters,
+            record.id,
+            date,
+          );
+          visualAnalyzedPhotos += 1;
         } catch {
           // A single unreadable photo does not stop the rest of the recap.
         }
@@ -419,11 +572,14 @@ export async function analyzeFiles(
       });
       if (record.worldName) worldNames.add(record.worldName);
 
-      discoveries.people = nameCounts.size;
-      discoveries.worlds = worldNames.size;
-      discoveries.photosWithTwoPeople += participants.length === 2 || record.faceClusterIds.length === 2
-        ? 1
-        : 0;
+      discoveries.visualPeople = subjectClusters.filter((cluster) => cluster.days.size >= 2).length;
+      discoveries.visualPlaces = sceneClusters.filter((cluster) => cluster.days.size >= 2).length;
+      discoveries.people = Math.max(nameCounts.size, discoveries.visualPeople);
+      discoveries.worlds = Math.max(worldNames.size, discoveries.visualPlaces);
+      if (participants.length === 2 || record.subjectClusterIds.length === 2) {
+        twoPersonDays.add(localDayKey(date));
+      }
+      discoveries.daysWithTwoPeople = twoPersonDays.size;
       discoveries.topNames = topEntries(nameCounts, 4);
       onProgress({
         current: index + 1,
@@ -435,7 +591,8 @@ export async function analyzeFiles(
           date: date.toISOString(),
           file,
           nicknames: participants.map((participant) => participant.name),
-          twoPersonMoment: participants.length === 2 || record.faceClusterIds.length === 2,
+          twoPersonMoment: participants.length === 2 || record.subjectClusterIds.length === 2,
+          visualSubjects: record.subjectClusterIds.length,
           worldName: record.worldName,
         },
         stage: "remembering",
@@ -444,7 +601,7 @@ export async function analyzeFiles(
       if (index % 6 === 0) await waitForPaint();
     }
   } finally {
-    faceDetector?.close();
+    visualAnalyzer?.close();
   }
 
   records.sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -459,25 +616,81 @@ export async function analyzeFiles(
   const peopleInference = inferMetadataPeople(records);
   const self = peopleInference.self;
   const specialMetadataPerson = peopleInference.special;
-  const specialMetadataPhotoIds = new Set(specialMetadataPerson?.pairPhotoIds ?? []);
+  const specialMetadataPhotoIds = new Set(specialMetadataPerson?.pairDayPhotoIds ?? []);
   const specialMetadataPhotos = records.filter((photo) => specialMetadataPhotoIds.has(photo.id));
 
-  const faceInference = inferRecurringFaces(faceClusters, records, Boolean(self));
+  const faceInference = inferRecurringFaces(
+    subjectClusters,
+    records.map((photo) => ({
+      date: photo.date,
+      faceClusterIds: photo.subjectClusterIds,
+      id: photo.id,
+    })),
+    Boolean(self),
+  );
   const inferredSelfFace = faceInference.selfFaceId
-    ? faceClusters.find((cluster) => cluster.id === faceInference.selfFaceId)
+    ? subjectClusters.find((cluster) => cluster.id === faceInference.selfFaceId)
     : undefined;
   const specialFacePhotoIds = new Set(faceInference.specialPhotoIds);
   const specialFacePhotos = records.filter((photo) => specialFacePhotoIds.has(photo.id));
 
   const worlds = buildWorlds(records);
-  const topWorldEntries = Array.from(worlds.values())
-    .sort((a, b) => b.instances.size - a.instances.size || b.photos.length - a.photos.length)
-    .slice(0, 6);
+  const metadataWorldEntries: RankedWorldEntry[] = Array.from(worlds.values())
+    .sort((a, b) => b.days.size - a.days.size
+      || b.instances.size - a.instances.size
+      || b.photos.length - a.photos.length)
+    .slice(0, 6)
+    .map((world) => ({
+      activeDays: world.days.size,
+      displayName: world.displayName,
+      id: world.id,
+      inference: "metadata",
+      photos: world.photos,
+    }));
+  const recordsById = new Map(records.map((photo) => [photo.id, photo]));
+  const visualWorldEntries: RankedWorldEntry[] = inferRecurringScenes(sceneClusters)
+    .flatMap((scene): RankedWorldEntry[] => {
+      const photos = scene.photoIds
+        .map((id) => recordsById.get(id))
+        .filter((photo): photo is PhotoRecord => Boolean(photo));
+      return photos.length
+        ? [{
+          activeDays: scene.activeDays,
+          id: scene.id,
+          inference: "visual",
+          photos,
+        }]
+        : [];
+    });
+  const temporalWorldEntries: RankedWorldEntry[] = inferTemporalScenes(records)
+    .flatMap((period): RankedWorldEntry[] => {
+      const photos = period.photoIds
+        .map((id) => recordsById.get(id))
+        .filter((photo): photo is PhotoRecord => Boolean(photo));
+      return photos.length
+        ? [{
+          activeDays: period.activeDays,
+          id: period.id,
+          inference: "temporal",
+          month: period.month,
+          photos,
+          year: period.year,
+        }]
+        : [];
+    });
+  const topWorldEntries = selectSceneResults(
+    metadataWorldEntries,
+    visualWorldEntries,
+    temporalWorldEntries,
+  );
+  const visualSceneRanks = new Map(
+    visualWorldEntries.map((scene, index) => [scene.id, index + 1]),
+  );
 
   const daySet = new Set<string>();
   const yearCounts = new Map<number, { days: Set<string>; photos: number }>();
   const monthCounts = new Map<string, PhotoRecord[]>();
-  const seasonCounts = [0, 0, 0, 0];
+  const dayCounts = new Map<string, PhotoRecord[]>();
   for (const photo of records) {
     const day = localDayKey(photo.date);
     daySet.add(day);
@@ -490,27 +703,72 @@ export async function analyzeFiles(
     const monthPhotos = monthCounts.get(month) ?? [];
     monthPhotos.push(photo);
     monthCounts.set(month, monthPhotos);
-    seasonCounts[seasonIndex(photo.date)] += 1;
+    const dayPhotos = dayCounts.get(day) ?? [];
+    dayPhotos.push(photo);
+    dayCounts.set(day, dayPhotos);
   }
-  const topMonthEntry = Array.from(monthCounts.entries())
-    .sort((a, b) => b[1].length - a[1].length)[0];
+  const periodSummary = summarizeRecapPeriods(records);
+  const topMonthEntry = [
+    periodSummary.topMonthKey,
+    monthCounts.get(periodSummary.topMonthKey)!,
+  ] as const;
   const [topMonthYear, topMonthNumber] = topMonthEntry[0].split("-").map(Number);
-  const topSeason = seasonCounts.indexOf(Math.max(...seasonCounts));
+  const topDayEntry = [
+    periodSummary.topDayKey,
+    dayCounts.get(periodSummary.topDayKey)!,
+  ] as const;
+  const [topDayYear, topDayMonth, topDayNumber] = topDayEntry[0].split("-").map(Number);
+  const { topHour, topPeriod } = periodSummary;
+  const topPeriodRecords = topPeriod === "day" ? topDayEntry[1] : topMonthEntry[1];
 
-  const timelineRecords = sampleEvenly(records, MAX_TIMELINE_PHOTOS);
-  const peakMonthRecord = representativePhoto(topMonthEntry[1]);
+  const visualSelfId = faceInference.selfFaceId;
+  const visualSelfPhotos = inferredSelfFace
+    ? Array.from(inferredSelfFace.photoIds)
+      .map((id) => recordsById.get(id))
+      .filter((photo): photo is PhotoRecord => Boolean(photo))
+    : [];
+  const visualSelfRecord = visualSelfPhotos.length
+    ? representativePhoto(visualSelfPhotos, undefined, visualSelfId)
+    : undefined;
+  const timelineRecords = sampleRepresentativePhotos(
+    records,
+    MAX_TIMELINE_PHOTOS,
+    self?.key,
+    visualSelfId,
+  );
+  const peakPeriodRecord = representativePhoto(
+    topPeriodRecords,
+    self?.key,
+    visualSelfId,
+  );
   const specialRecords = sampleEvenly(
     specialMetadataPhotos.length ? specialMetadataPhotos : specialFacePhotos,
     MAX_SPECIAL_PHOTOS,
   );
-  const coverRecord = records[Math.min(records.length - 1, Math.round(records.length * 0.68))];
+  const visualPersonRepresentativeRecords = new Map(
+    faceInference.visualPeople.slice(0, 10).flatMap((person) => {
+      const personPhotos = person.photoIds
+        .map((id) => recordsById.get(id))
+        .filter((photo): photo is PhotoRecord => Boolean(photo));
+      return personPhotos.length
+        ? [[person.id, representativePhoto(personPhotos)] as const]
+        : [];
+    }),
+  );
+  const coverRecord = representativePhoto(records, self?.key, visualSelfId);
   const selectedRecords = new Map<string, PhotoRecord>();
   [
     ...timelineRecords,
-    peakMonthRecord,
+    peakPeriodRecord,
     coverRecord,
-    ...topWorldEntries.map((world) => representativePhoto(world.photos)),
+    ...topWorldEntries.map((world) => representativePhoto(
+      world.photos,
+      self?.key,
+      visualSelfId,
+    )),
     ...specialRecords,
+    ...visualPersonRepresentativeRecords.values(),
+    ...(visualSelfRecord ? [visualSelfRecord] : []),
   ].forEach((photo) => selectedRecords.set(photo.id, photo));
 
   const recapPhotos = Array.from(selectedRecords.values())
@@ -521,6 +779,10 @@ export async function analyzeFiles(
       id: photo.id,
       nicknames: photo.participants.map((participant) => participant.name),
       url: URL.createObjectURL(photo.file),
+      visualSceneRank: photo.sceneClusterId
+        ? visualSceneRanks.get(photo.sceneClusterId)
+        : undefined,
+      visualSubjects: photo.subjectClusterIds.length,
       worldName: photo.worldName,
     }));
 
@@ -543,7 +805,7 @@ export async function analyzeFiles(
       firstDate: specialMetadataPerson.firstDate.toISOString(),
       inference: "metadata",
       lastDate: specialMetadataPerson.lastDate.toISOString(),
-      pairPhotos: specialMetadataPhotos.length,
+      pairDays: specialMetadataPerson.pairDayPhotoIds.length,
       photoIds: specialRecords.map((photo) => photo.id),
       topWorld: specialTopWorld,
     }
@@ -551,9 +813,9 @@ export async function analyzeFiles(
       ? {
         activeDays: new Set(specialSourcePhotos.map((photo) => localDayKey(photo.date))).size,
         firstDate: specialSourcePhotos[0].date.toISOString(),
-        inference: "faces",
+        inference: "visual",
         lastDate: specialSourcePhotos.at(-1)!.date.toISOString(),
-        pairPhotos: specialSourcePhotos.length,
+        pairDays: specialSourcePhotos.length,
         photoIds: specialRecords.map((photo) => photo.id),
         topWorld: specialTopWorld,
       }
@@ -567,35 +829,51 @@ export async function analyzeFiles(
       activeDays: person.activeDays,
       displayName: person.name,
       firstDate: person.firstDate.toISOString(),
+      id: person.key,
+      inference: "metadata",
       lastDate: person.lastDate.toISOString(),
-      pairPhotos: person.pairPhotoIds.length,
+      pairDays: person.pairDayPhotoIds.length,
       photoCount: person.photoCount,
     }));
+  const visualPeople = faceInference.visualPeople
+    .slice(0, 10)
+    .map((person): PersonRecap => ({
+      activeDays: person.activeDays,
+      firstDate: person.firstDate.toISOString(),
+      id: person.id,
+      inference: "visual",
+      lastDate: person.lastDate.toISOString(),
+      pairDays: person.pairDayPhotoIds.length,
+      photoId: visualPersonRepresentativeRecords.get(person.id)?.id,
+      photoCount: person.photoIds.length,
+    }));
+  const recapPeople = metadataPeople.length ? metadataPeople : visualPeople;
 
-  const mode = metadataPhotos > 0 && faceAnalyzedPhotos > 0
+  const mode = metadataPhotos > 0 && visualAnalyzedPhotos > 0
     ? "mixed"
     : metadataPhotos > 0
       ? "metadata"
-      : faceAnalyzedPhotos > 0
-        ? "faces"
+      : visualAnalyzedPhotos > 0
+        ? "visual"
         : "photos";
 
   return {
     analysis: {
-      faceAnalysisAvailable: Boolean(faceDetector) || faceAnalyzedPhotos > 0,
-      faceAnalyzedPhotos,
       metadataPhotos,
       mode,
+      visualAnalysisAvailable: Boolean(visualAnalyzer) || visualAnalyzedPhotos > 0,
+      visualAnalyzedPhotos,
     },
     coverPhotoId: coverRecord.id,
     endDate: records.at(-1)!.date.toISOString(),
     generatedAt: new Date().toISOString(),
-    peakMonthPhotoId: peakMonthRecord.id,
+    peakPeriodPhotoId: peakPeriodRecord.id,
     photos: recapPhotos,
-    schema: "vrchat-recap/v6",
+    schema: "vrchat-recap/v11",
     startDate: records[0].date.toISOString(),
     stats: {
       activeDays: daySet.size,
+      activeMonths: monthCounts.size,
       activeYears: Array.from(yearCounts.entries())
         .sort((a, b) => a[0] - b[0])
         .map(([year, value]) => ({
@@ -603,8 +881,8 @@ export async function analyzeFiles(
           photos: value.photos,
           year,
         })),
-      people: metadataPeople,
-      recurringFaces: faceInference.recurringFaceCount,
+      people: recapPeople,
+      recurringPeople: faceInference.recurringFaceCount,
       self: self
         ? {
           displayName: self.name,
@@ -613,22 +891,38 @@ export async function analyzeFiles(
         }
         : inferredSelfFace
           ? {
-            inference: "faces",
-            photoCount: inferredSelfFace.photoIds.size,
+            inference: "visual",
+            photoId: visualSelfRecord?.id,
+            photoCount: inferredSelfFace.days.size,
           }
           : undefined,
       specialPerson,
+      topDay: {
+        day: topDayNumber,
+        month: topDayMonth,
+        photoCount: topDayEntry[1].length,
+        year: topDayYear,
+      },
+      topHour,
       topMonth: {
         month: topMonthNumber,
         photoCount: topMonthEntry[1].length,
         year: topMonthYear,
       },
-      topSeason,
+      topPeriod,
       topWorlds: topWorldEntries.map((world) => ({
+        activeDays: world.activeDays,
         displayName: world.displayName,
+        id: world.id,
+        inference: world.inference,
+        month: world.month,
         photoCount: world.photos.length,
-        photoId: representativePhoto(world.photos).id,
-        visitCount: world.instances.size,
+        photoId: representativePhoto(
+          world.photos,
+          self?.key,
+          visualSelfId,
+        ).id,
+        year: world.year,
       })),
     },
     timelinePhotoIds: timelineRecords.map((photo) => photo.id),

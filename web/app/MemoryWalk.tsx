@@ -41,6 +41,7 @@ type LoadingPreview = {
   fileName: string;
   nicknames: string[];
   url: string;
+  visualSubjects: number;
   worldName?: string;
 };
 
@@ -49,9 +50,11 @@ const LANGUAGE_STORAGE_KEY = "vrchat-recap-language";
 const EMPTY_PROGRESS: AnalysisProgress = {
   current: 0,
   discoveries: {
+    daysWithTwoPeople: 0,
     people: 0,
-    photosWithTwoPeople: 0,
     topNames: [],
+    visualPeople: 0,
+    visualPlaces: 0,
     worlds: 0,
   },
   stage: "preparing",
@@ -61,13 +64,15 @@ const EMPTY_PROGRESS: AnalysisProgress = {
 const COPY = {
   ko: {
     activeDays: "사진을 남긴 날",
-    brandLabel: "VRChat Recap 처음으로",
+    activeMonths: "추억이 남은 달",
+    brandLabel: "VRC Recap 처음으로",
     chooseFolder: "사진 폴더 고르기",
     chooseFolderAgain: "다른 폴더로 다시 만들기",
     composing: "이제 흩어진 장면들을 하나의 이야기로 잇고 있어요.",
-    discoveredPeople: "함께한 사람",
-    discoveredWorlds: "발견한 월드",
-    emptyPeople: "이름이 남아 있는 사진을 더 찾으면 함께한 사람들의 이야기가 나타나요.",
+    discoveredPeople: "함께 등장한 사람",
+    discoveredWorlds: "되돌아온 장소",
+    dayStory: (count: number) => `이 하루에만 ${count.toLocaleString("ko-KR")}장의 장면이 남아 있어요.`,
+    emptyPeople: "반복해서 등장한 사람을 충분히 찾지 못했지만, 사진의 시간과 장면은 그대로 추억에 남아 있어요.",
     endingBody: "돌아보면 긴 시간은 언제나 몇 장의 사진과 몇 사람의 이름으로 다시 가까워집니다.",
     endingTitle: "그때의 우리는, 사진 속에 그대로 남아 있어요.",
     errorAnalysis: "사진을 살펴보는 중 문제가 생겼어요. 읽을 수 있는 사진으로 다시 시도해 주세요.",
@@ -75,24 +80,28 @@ const COPY = {
     errorNoImages: "선택한 폴더에서 사진을 찾지 못했어요.",
     firstStep: "사진 폴더를 선택하세요",
     firstStepBody: "VRChat에서 남긴 스크린샷이 있는 폴더면 충분해요.",
-    foundPair: "둘만 남긴 순간을 발견했어요.",
+    familiarPerson: (rank: number) => `익숙한 아바타 ${rank}`,
+    familiarScene: (rank: number) => `다시 나타난 풍경 ${rank}`,
+    foundPair: "서로 다른 날에 둘만 남긴 순간을 찾고 있어요.",
     foundPerson: (name: string) => `${name}님과 함께한 순간을 찾았어요.`,
+    foundVisualPerson: (count: number) => `사진 속에서 ${count.toLocaleString("ko-KR")}명의 익숙한 모습을 찾았어요.`,
     foundWorld: (world: string) => `${world}의 추억이 다시 떠오르고 있어요.`,
     galleryLabel: "추억 사진",
     heroAccent: "우리의 시간",
-    heroBody: "수많은 스크린샷 속에서 자주 찾았던 월드와 함께했던 이름, 오래 이어진 인연을 다시 만나보세요.",
+    heroBody: "수많은 스크린샷 속에서 자주 돌아간 풍경과 반복해서 함께한 모습, 오래 이어진 인연을 다시 만나보세요.",
     heroTitle: "사진 속에 남은",
     language: "언어",
     loadingCount: (current: number, total: number) => `${total.toLocaleString("ko-KR")}장의 사진 중 ${current.toLocaleString("ko-KR")}장을 살펴보고 있어요`,
     loadingFilm: "지금까지 지나온 장면",
-    loadingPeople: "자주 보이는 이름",
+    loadingPeople: "자주 보이는 이름과 아바타",
     loadingTitle: "추억이 하나씩 모습을 드러내고 있어요",
     monthStory: (count: number) => `이 한 달에만 ${count.toLocaleString("ko-KR")}장의 장면이 남아 있어요.`,
-    nextStep: "월드와 이름이 모입니다",
-    nextStepBody: "사진에 남은 날짜, 월드, 닉네임이 시간순으로 이어져요.",
-    noNamesYet: "아직 이름이 남은 장면을 찾는 중이에요.",
+    nextStep: "장소와 사람이 모입니다",
+    nextStepBody: "사진에 남은 날짜와 반복되는 장소, 함께 등장한 모습이 시간순으로 이어져요.",
+    noNamesYet: "반복해서 등장한 이름과 모습을 찾는 중이에요.",
     noWorld: "이름이 남지 않은 월드",
     peopleBody: "사진마다 다시 나타난 이름들이 이 시간의 동행자가 되었습니다.",
+    peopleCount: "다시 만난 사람",
     peopleTitle: "몇 번이고 다시 만난 이름",
     photoCount: "남겨진 사진",
     preparing: "사진 폴더의 첫 장면을 펼치고 있어요.",
@@ -100,60 +109,65 @@ const COPY = {
     recapLead: (days: number) => `${days.toLocaleString("ko-KR")}일에 걸쳐 남긴 장면들이 다시 하나의 흐름이 되었습니다.`,
     recapTitle: (name?: string) => name ? `${name}님의 추억` : "당신의 추억",
     scroll: "아래로 내려 추억을 이어서 보세요",
-    seasonNames: ["봄", "여름", "가을", "겨울"],
-    shareBody: "한 장에 모은 올해의 월드, 사람, 사진을 이미지로 저장하거나 X에 바로 공유해 보세요.",
-    shareCardTitle: (name?: string) => name ? `${name}님의 VRChat Recap` : "나의 VRChat Recap",
+    shareBody: "사진, 활동한 날, 자주 돌아간 장소와 함께한 사람을 한 장의 이미지로 모아보세요.",
+    shareCardTitle: (name?: string) => name ? `${name}님의 VRC Recap` : "나의 VRC Recap",
     shareFailed: "공유 이미지를 만들지 못했어요. 잠시 후 다시 시도해 주세요.",
-    shareImage: "이미지로 공유하기",
     shareLabel: "한 장으로 보는 종합 결과",
     shareMonthValue: (month: string, photos: number) => `${month} · ${photos.toLocaleString("ko-KR")}장`,
-    sharePost: (photos: number, world?: string, person?: string) => [
-      `${photos.toLocaleString("ko-KR")}장의 VRChat 추억을 돌아봤어요.`,
-      world ? `가장 많이 찾은 월드는 ${world}.` : "",
-      person ? `둘만의 추억이 가장 많은 사람은 ${person}.` : "",
-      "#VRChatRecap",
-    ].filter(Boolean).join(" "),
     sharePreparing: "공유 이미지를 만들고 있어요…",
-    shareSaved: "공유 이미지가 저장됐어요. X 글에 첨부해 보세요.",
-    shareSpecialValue: (name: string, photos: number) => `${name} · 둘만의 사진 ${photos.toLocaleString("ko-KR")}장`,
-    shareSuccess: "공유 화면을 열었어요.",
+    shareSaved: "공유 이미지가 저장됐어요.",
+    shareSpecialValue: (name: string, days: number) => `${name} · 둘만의 날 ${days.toLocaleString("ko-KR")}일`,
     shareTitle: "이 모든 추억을 한 장에",
-    shareWorldValue: (world: string, visits: number) => `${world} · ${visits.toLocaleString("ko-KR")}회`,
+    shareSceneValue: (scene: string, days: number) => `${scene} · ${days.toLocaleString("ko-KR")}일`,
+    shareWorldValue: (world: string, days: number) => `${world} · ${days.toLocaleString("ko-KR")}일`,
     saveShareImage: "공유 이미지 저장",
     selfBody: (name: string, count: number) => `${name}님은 ${count.toLocaleString("ko-KR")}장의 사진에 가장 자주 남은 이름이에요.`,
-    selfFaceBody: (count: number) => `${count.toLocaleString("ko-KR")}장의 사진에서 가장 익숙한 얼굴의 흐름이 이어졌어요.`,
-    specialBody: (count: number) => `둘만 함께한 사진이 ${count.toLocaleString("ko-KR")}장. 많은 사람 가운데서도 유난히 자주 둘만의 순간이 남았습니다.`,
+    selfFaceBody: (count: number) => `${count.toLocaleString("ko-KR")}일에 걸쳐 가장 익숙한 모습이 다시 나타났어요.`,
+    specialBody: (count: number) => `둘만 함께한 날이 ${count.toLocaleString("ko-KR")}일. 같은 날의 연속 사진은 한 번으로 모아, 여러 날 이어진 인연만 남겼습니다.`,
     specialGeneric: "가장 익숙한 사람",
     specialLabel: "둘만의 시간",
     specialTitle: (name?: string) => name ? `${name}님과 남긴 장면` : "둘만 남긴 장면",
     statDays: "함께한 날",
     statFirstLast: "처음부터 마지막까지",
-    statPair: "둘만의 사진",
+    statPair: "둘만의 날",
     statPlace: "함께 찾은 월드",
+    sceneDays: "일에 등장",
     storyReady: "나만의 Recap이 완성됩니다",
-    storyReadyBody: "원본 사진과 실제 이름으로 이어지는 한 편의 추억 이야기를 만나보세요.",
+    storyReadyBody: "원본 사진에 남은 시간과 장소, 익숙한 모습으로 이어지는 한 편의 추억 이야기를 만나보세요.",
     timelineBody: "오래전의 첫 장면부터 가장 최근의 밤까지, 시간순으로 다시 이어봅니다.",
     timelineTitle: "시간을 따라 다시 걷는 장면",
+    topDay: "가장 많은 추억이 남은 날",
+    topHour: "가장 많은 사진을 남긴 시간",
     topMonth: "가장 많은 추억이 남은 달",
     topPeople: "함께한 이름",
-    topSeason: "가장 많은 장면이 남은 계절",
+    topPeriod: "가장 많은 장면이 남은 시기",
+    topScene: "가장 자주 돌아온 풍경",
     topWorld: "가장 많이 찾은 월드",
     unknownDate: "날짜를 확인하는 중",
-    visits: "번의 방문",
+    visits: "번 방문",
+    visualPeopleBody: "사진 속에서 반복해서 함께 등장한 아바타들이 이 시간의 동행자가 되었습니다.",
+    visualPeopleCount: "반복해서 나타난 모습",
+    visualPeopleTitle: "몇 번이고 다시 만난 모습",
+    visualSubjects: (count: number) => `익숙한 모습 ${count.toLocaleString("ko-KR")}명`,
+    visualWorldBody: "월드 이름이 남지 않아도 비슷한 풍경이 여러 날 반복되며 추억의 장소가 되었습니다.",
+    visualWorldsTitle: "사진 속에서 되돌아온 풍경",
+    temporalWorldBody: "월드 이름이 남아 있지 않아도, 사진을 남긴 달마다 장면을 모아 추억의 흐름을 만들었습니다.",
+    temporalWorldsTitle: "달마다 다시 펼친 장면",
     worldBody: "문을 열고 다시 찾았던 장소들이 추억의 배경으로 남았습니다.",
     worldPhotos: "장의 사진",
     worldsTitle: "몇 번이고 돌아간 월드",
-    xShare: "X에 공유하기",
   },
   en: {
     activeDays: "days remembered",
-    brandLabel: "Back to VRChat Recap",
+    activeMonths: "months remembered",
+    brandLabel: "Back to VRC Recap",
     chooseFolder: "Choose photo folder",
     chooseFolderAgain: "Start again with another folder",
     composing: "The scattered moments are becoming one story.",
-    discoveredPeople: "people found",
-    discoveredWorlds: "worlds found",
-    emptyPeople: "When more photos carry names, the people in your story will appear here.",
+    discoveredPeople: "people appearing",
+    discoveredWorlds: "places returning",
+    dayStory: (count: number) => `${count.toLocaleString("en-US")} moments were saved on this day alone.`,
+    emptyPeople: "No person appeared often enough to form a group, but the dates and scenes still remain part of the story.",
     endingBody: "A long stretch of time can feel close again through a handful of photos and familiar names.",
     endingTitle: "You are still there, exactly as the photos remember.",
     errorAnalysis: "Something went wrong while looking through the photos. Please try again with readable images.",
@@ -161,24 +175,28 @@ const COPY = {
     errorNoImages: "No photos were found in the selected folder.",
     firstStep: "Choose your photo folder",
     firstStepBody: "A folder containing your VRChat screenshots is all you need.",
-    foundPair: "A memory of just the two of you.",
+    familiarPerson: (rank: number) => `Familiar avatar ${rank}`,
+    familiarScene: (rank: number) => `Returning scene ${rank}`,
+    foundPair: "Looking for moments with just the two of you across different days.",
     foundPerson: (name: string) => `We found a moment shared with ${name}.`,
+    foundVisualPerson: (count: number) => `${count.toLocaleString("en-US")} familiar figures are coming into view.`,
     foundWorld: (world: string) => `${world} is coming back into view.`,
     galleryLabel: "Memory photos",
     heroAccent: "the time we shared",
-    heroBody: "Return to the worlds you visited most, the names that kept appearing, and the connections that lasted across thousands of screenshots.",
+    heroBody: "Return to the scenes you revisited, the familiar figures who kept appearing, and the connections that lasted across thousands of screenshots.",
     heroTitle: "Still alive in our photos:",
     language: "Language",
     loadingCount: (current: number, total: number) => `Looking through ${current.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} memories`,
     loadingFilm: "Moments seen so far",
-    loadingPeople: "Names coming into focus",
+    loadingPeople: "Names and familiar avatars",
     loadingTitle: "Your memories are appearing one by one",
     monthStory: (count: number) => `${count.toLocaleString("en-US")} moments were saved in this month alone.`,
-    nextStep: "Worlds and names come together",
-    nextStepBody: "Dates, worlds, and nicknames fall into place along the timeline.",
-    noNamesYet: "Still looking for moments where names were recorded.",
+    nextStep: "Places and people come together",
+    nextStepBody: "Dates, recurring places, and familiar figures fall into place along the timeline.",
+    noNamesYet: "Still looking for names and figures that return across the photos.",
     noWorld: "A world without a recorded name",
     peopleBody: "The names that returned across the photos became the companions of this story.",
+    peopleCount: "people met again",
     peopleTitle: "The names you met again and again",
     photoCount: "photos kept",
     preparing: "Opening the first moments in your photo folder.",
@@ -186,60 +204,65 @@ const COPY = {
     recapLead: (days: number) => `Moments saved across ${days.toLocaleString("en-US")} days have become one continuous story.`,
     recapTitle: (name?: string) => name ? `${name}'s memories` : "Your memories",
     scroll: "Scroll to continue through your memories",
-    seasonNames: ["spring", "summer", "autumn", "winter"],
-    shareBody: "Save the worlds, people, and photos that shaped your Recap as one image, or open a post on X.",
-    shareCardTitle: (name?: string) => name ? `${name}'s VRChat Recap` : "My VRChat Recap",
+    shareBody: "Bring your photos, active days, returning places, and familiar people together in one image.",
+    shareCardTitle: (name?: string) => name ? `${name}'s VRC Recap` : "My VRC Recap",
     shareFailed: "The share image could not be created. Please try again.",
-    shareImage: "Share as an image",
     shareLabel: "YOUR STORY AT A GLANCE",
     shareMonthValue: (month: string, photos: number) => `${month} · ${photos.toLocaleString("en-US")} photos`,
-    sharePost: (photos: number, world?: string, person?: string) => [
-      `I looked back on ${photos.toLocaleString("en-US")} VRChat memories.`,
-      world ? `My most visited world was ${world}.` : "",
-      person ? `I shared the most two-person memories with ${person}.` : "",
-      "#VRChatRecap",
-    ].filter(Boolean).join(" "),
     sharePreparing: "Preparing your share image…",
-    shareSaved: "Your share image was saved. Attach it to your post on X.",
-    shareSpecialValue: (name: string, photos: number) => `${name} · ${photos.toLocaleString("en-US")} two-person photos`,
-    shareSuccess: "The share sheet is open.",
+    shareSaved: "Your share image was saved.",
+    shareSpecialValue: (name: string, days: number) => `${name} · ${days.toLocaleString("en-US")} days with just two`,
     shareTitle: "Your whole story, in one frame",
-    shareWorldValue: (world: string, visits: number) => `${world} · ${visits.toLocaleString("en-US")} visits`,
+    shareSceneValue: (scene: string, days: number) => `${scene} · ${days.toLocaleString("en-US")} days`,
+    shareWorldValue: (world: string, days: number) => `${world} · ${days.toLocaleString("en-US")} days`,
     saveShareImage: "Save share image",
     selfBody: (name: string, count: number) => `${name} is the name that appears most often, across ${count.toLocaleString("en-US")} photos.`,
-    selfFaceBody: (count: number) => `One familiar face keeps returning across ${count.toLocaleString("en-US")} photos.`,
-    specialBody: (count: number) => `${count.toLocaleString("en-US")} photos hold a moment with just the two of you—a connection that stands out from all the rest.`,
+    selfFaceBody: (count: number) => `One familiar figure returns across ${count.toLocaleString("en-US")} different days.`,
+    specialBody: (count: number) => `The two of you appear alone across ${count.toLocaleString("en-US")} different days. Bursts from the same day count only once.`,
     specialGeneric: "Your most familiar person",
     specialLabel: "JUST THE TWO OF YOU",
     specialTitle: (name?: string) => name ? `The moments you shared with ${name}` : "The moments shared by just two",
     statDays: "days together",
     statFirstLast: "from first to last",
-    statPair: "two-person photos",
+    statPair: "days with just two",
     statPlace: "a world you shared",
+    sceneDays: "days seen",
     storyReady: "Your personal Recap takes shape",
-    storyReadyBody: "See a memory story made from your original photos and the names recorded with them.",
+    storyReadyBody: "See a memory story shaped by the times, places, and familiar figures preserved in your original photos.",
     timelineBody: "From the earliest frame to the most recent night, the years meet again in order.",
     timelineTitle: "Following the memories through time",
+    topDay: "The day that held the most memories",
+    topHour: "The hour with the most photos",
     topMonth: "The month that held the most memories",
     topPeople: "Names beside you",
-    topSeason: "The season with the most moments",
+    topPeriod: "The period with the most moments",
+    topScene: "Most familiar returning scene",
     topWorld: "Most visited world",
     unknownDate: "Finding the date",
     visits: "visits",
+    visualPeopleBody: "The avatars that kept returning across the photos became the companions of this story.",
+    visualPeopleCount: "figures returning",
+    visualPeopleTitle: "The figures you met again and again",
+    visualSubjects: (count: number) => `${count.toLocaleString("en-US")} familiar figures`,
+    visualWorldBody: "Even without recorded world names, similar views returning across different days became places in your memory.",
+    visualWorldsTitle: "The scenes that kept returning",
+    temporalWorldBody: "Even without recorded world names, the photos now form memory chapters for each month you captured.",
+    temporalWorldsTitle: "Scenes remembered month by month",
     worldBody: "The places you opened and returned to became the backdrop of your memories.",
     worldPhotos: "photos",
     worldsTitle: "The worlds you kept returning to",
-    xShare: "Share on X",
   },
   ja: {
     activeDays: "写真を残した日",
-    brandLabel: "VRChat Recapの最初へ",
+    activeMonths: "思い出を残した月",
+    brandLabel: "VRC Recapの最初へ",
     chooseFolder: "写真フォルダーを選ぶ",
     chooseFolderAgain: "別のフォルダーでもう一度",
     composing: "散らばっていた場面を、ひとつの物語につないでいます。",
-    discoveredPeople: "一緒にいた人",
-    discoveredWorlds: "見つかったワールド",
-    emptyPeople: "名前が残っている写真が増えると、一緒に過ごした人たちの物語がここに現れます。",
+    discoveredPeople: "一緒に写った人",
+    discoveredWorlds: "よみがえった場所",
+    dayStory: (count: number) => `この1日だけで${count.toLocaleString("ja-JP")}枚の場面が残っています。`,
+    emptyPeople: "何度も登場する人は十分に見つかりませんでしたが、写真の時間と場面は思い出として残っています。",
     endingBody: "長い時間も、数枚の写真と懐かしい名前を通して、もう一度すぐそばに戻ってきます。",
     endingTitle: "あの頃の私たちは、写真の中にそのまま残っています。",
     errorAnalysis: "写真を振り返る途中で問題が起きました。読み込める写真でもう一度お試しください。",
@@ -247,24 +270,28 @@ const COPY = {
     errorNoImages: "選択したフォルダーに写真が見つかりませんでした。",
     firstStep: "写真フォルダーを選びます",
     firstStepBody: "VRChatのスクリーンショットが入ったフォルダーだけで始められます。",
-    foundPair: "ふたりだけで残した一枚を見つけました。",
+    familiarPerson: (rank: number) => `懐かしいアバター ${rank}`,
+    familiarScene: (rank: number) => `よみがえった風景 ${rank}`,
+    foundPair: "別の日にも続く、ふたりだけの場面を探しています。",
     foundPerson: (name: string) => `${name}さんと過ごした瞬間を見つけました。`,
+    foundVisualPerson: (count: number) => `写真の中に${count.toLocaleString("ja-JP")}人の懐かしい姿を見つけました。`,
     foundWorld: (world: string) => `${world}の記憶がよみがえってきました。`,
     galleryLabel: "思い出の写真",
     heroAccent: "一緒に過ごした時間",
-    heroBody: "たくさんのスクリーンショットから、何度も訪れたワールド、一緒にいた名前、長く続いたつながりを振り返りましょう。",
+    heroBody: "たくさんのスクリーンショットから、何度も戻った風景、繰り返し現れた姿、長く続いたつながりを振り返りましょう。",
     heroTitle: "写真の中に残る",
     language: "言語",
     loadingCount: (current: number, total: number) => `${total.toLocaleString("ja-JP")}枚の思い出のうち、${current.toLocaleString("ja-JP")}枚を振り返っています`,
     loadingFilm: "これまでに見つけた場面",
-    loadingPeople: "よく現れる名前",
+    loadingPeople: "よく現れる名前とアバター",
     loadingTitle: "思い出がひとつずつ姿を見せています",
     monthStory: (count: number) => `この1か月だけで${count.toLocaleString("ja-JP")}枚の場面が残っています。`,
-    nextStep: "ワールドと名前が集まります",
-    nextStepBody: "日付、ワールド、ニックネームが時間の流れに沿ってつながります。",
-    noNamesYet: "名前が残っている場面を探しています。",
+    nextStep: "場所と人が集まります",
+    nextStepBody: "日付、繰り返し現れる場所、一緒に写った姿が時間の流れに沿ってつながります。",
+    noNamesYet: "何度も現れる名前と姿を探しています。",
     noWorld: "名前が残っていないワールド",
     peopleBody: "写真の中で何度も現れた名前が、この物語の大切な仲間になりました。",
+    peopleCount: "再会した人",
     peopleTitle: "何度も再会した名前",
     photoCount: "残された写真",
     preparing: "写真フォルダーの最初の場面を開いています。",
@@ -272,50 +299,53 @@ const COPY = {
     recapLead: (days: number) => `${days.toLocaleString("ja-JP")}日にわたって残した場面が、ひとつの物語になりました。`,
     recapTitle: (name?: string) => name ? `${name}さんの思い出` : "あなたの思い出",
     scroll: "下へ進んで思い出の続きを見る",
-    seasonNames: ["春", "夏", "秋", "冬"],
-    shareBody: "このRecapを彩ったワールド、人、写真を一枚の画像に保存したり、Xへの投稿を開いたりできます。",
-    shareCardTitle: (name?: string) => name ? `${name}さんのVRChat Recap` : "私のVRChat Recap",
+    shareBody: "写真、活動した日、何度も戻った場所、一緒にいた人を一枚の画像にまとめます。",
+    shareCardTitle: (name?: string) => name ? `${name}さんのVRC Recap` : "私のVRC Recap",
     shareFailed: "共有画像を作成できませんでした。もう一度お試しください。",
-    shareImage: "画像として共有",
     shareLabel: "一枚で振り返る総合結果",
     shareMonthValue: (month: string, photos: number) => `${month} · ${photos.toLocaleString("ja-JP")}枚`,
-    sharePost: (photos: number, world?: string, person?: string) => [
-      `${photos.toLocaleString("ja-JP")}枚のVRChatの思い出を振り返りました。`,
-      world ? `いちばん訪れたワールドは${world}。` : "",
-      person ? `ふたりだけの思い出が最も多い相手は${person}。` : "",
-      "#VRChatRecap",
-    ].filter(Boolean).join(" "),
     sharePreparing: "共有画像を作成しています…",
-    shareSaved: "共有画像を保存しました。Xの投稿に添付してみましょう。",
-    shareSpecialValue: (name: string, photos: number) => `${name} · ふたりだけの写真${photos.toLocaleString("ja-JP")}枚`,
-    shareSuccess: "共有画面を開きました。",
+    shareSaved: "共有画像を保存しました。",
+    shareSpecialValue: (name: string, days: number) => `${name} · ふたりだけの日${days.toLocaleString("ja-JP")}日`,
     shareTitle: "すべての思い出を、一枚に",
-    shareWorldValue: (world: string, visits: number) => `${world} · ${visits.toLocaleString("ja-JP")}回`,
+    shareSceneValue: (scene: string, days: number) => `${scene} · ${days.toLocaleString("ja-JP")}日`,
+    shareWorldValue: (world: string, days: number) => `${world} · ${days.toLocaleString("ja-JP")}日`,
     saveShareImage: "共有画像を保存",
     selfBody: (name: string, count: number) => `${name}さんは、${count.toLocaleString("ja-JP")}枚の写真に最も多く残っている名前です。`,
-    selfFaceBody: (count: number) => `${count.toLocaleString("ja-JP")}枚の写真に、ひとつの懐かしい顔の流れが続いていました。`,
-    specialBody: (count: number) => `ふたりだけの写真は${count.toLocaleString("ja-JP")}枚。たくさんの人の中でも、ふたりの瞬間が特別に多く残っています。`,
+    selfFaceBody: (count: number) => `${count.toLocaleString("ja-JP")}日間にわたり、ひとつの懐かしい姿が繰り返し現れました。`,
+    specialBody: (count: number) => `ふたりだけで過ごした日は${count.toLocaleString("ja-JP")}日。同じ日の連続写真は一度として数え、別の日にも続いたつながりだけを残しました。`,
     specialGeneric: "いちばん懐かしい人",
     specialLabel: "ふたりだけの時間",
     specialTitle: (name?: string) => name ? `${name}さんと残した場面` : "ふたりだけで残した場面",
     statDays: "一緒にいた日",
     statFirstLast: "最初から最後まで",
-    statPair: "ふたりだけの写真",
+    statPair: "ふたりだけの日",
     statPlace: "一緒に訪れたワールド",
+    sceneDays: "日で登場",
     storyReady: "あなただけのRecapが完成します",
-    storyReadyBody: "元の写真と実際の名前でつながる、ひとつの思い出の物語です。",
+    storyReadyBody: "元の写真に残った時間、場所、懐かしい姿でつながる、ひとつの思い出の物語です。",
     timelineBody: "最初の一枚からいちばん最近の夜まで、時間の順にもう一度たどります。",
     timelineTitle: "時間に沿って思い出をたどる",
+    topDay: "いちばん多くの思い出が残った日",
+    topHour: "いちばん多く写真を残した時間",
     topMonth: "いちばん多くの思い出が残った月",
     topPeople: "一緒にいた名前",
-    topSeason: "いちばん多くの場面が残った季節",
+    topPeriod: "いちばん多くの場面が残った時期",
+    topScene: "いちばん多く戻った風景",
     topWorld: "いちばん訪れたワールド",
     unknownDate: "日付を確認しています",
     visits: "回訪問",
+    visualPeopleBody: "写真の中で何度も一緒に現れたアバターが、この物語の仲間になりました。",
+    visualPeopleCount: "繰り返し現れた姿",
+    visualPeopleTitle: "何度も再会した姿",
+    visualSubjects: (count: number) => `懐かしい姿 ${count.toLocaleString("ja-JP")}人`,
+    visualWorldBody: "ワールド名が残っていなくても、似た風景が別の日に繰り返し現れ、思い出の場所になりました。",
+    visualWorldsTitle: "写真の中でよみがえった風景",
+    temporalWorldBody: "ワールド名が残っていなくても、写真を残した月ごとに場面を集め、思い出の流れをつくりました。",
+    temporalWorldsTitle: "月ごとによみがえる場面",
     worldBody: "扉を開き、何度も戻った場所が思い出の背景として残っています。",
     worldPhotos: "枚の写真",
     worldsTitle: "何度も戻ったワールド",
-    xShare: "Xで共有",
   },
 } as const;
 
@@ -336,8 +366,77 @@ function formatMonth(language: Language, year: number, month: number): string {
   }).format(new Date(year, month - 1, 1));
 }
 
+function formatCalendarDay(
+  language: Language,
+  year: number,
+  month: number,
+  day: number,
+): string {
+  return new Intl.DateTimeFormat(localeFor(language), {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(year, month - 1, day, 12));
+}
+
+function formatHour(language: Language, hour: number): string {
+  if (language === "ko") return `${hour}시`;
+  if (language === "ja") return `${hour}時`;
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    hour12: true,
+  }).format(new Date(2026, 0, 1, hour));
+}
+
+function formatCompactDate(value: string): string {
+  const date = new Date(value);
+  return [
+    String(date.getFullYear()).slice(-2),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join(".");
+}
+
+function recapPlaceName(
+  language: Language,
+  world: MemoryJourney["stats"]["topWorlds"][number],
+  fallback: string,
+): string {
+  if (world.inference === "temporal" && world.year && world.month) {
+    return formatMonth(language, world.year, world.month);
+  }
+  return world.displayName ?? fallback;
+}
+
+function formatMonthRange(language: Language, startValue: string, endValue: string): string {
+  const start = new Date(startValue);
+  const end = new Date(endValue);
+  const startYear = start.getFullYear();
+  const endYear = end.getFullYear();
+  const startMonth = start.getMonth() + 1;
+  const endMonth = end.getMonth() + 1;
+
+  if (startYear === endYear && startMonth === endMonth) {
+    return formatMonth(language, startYear, startMonth);
+  }
+  if (startYear === endYear) {
+    if (language === "ko") return `${startYear}년 ${startMonth}월 — ${endMonth}월`;
+    if (language === "ja") return `${startYear}年${startMonth}月 — ${endMonth}月`;
+    const formatter = new Intl.DateTimeFormat(localeFor(language), { month: "long" });
+    return `${formatter.format(start)} — ${formatter.format(end)} ${startYear}`;
+  }
+  return `${formatMonth(language, startYear, startMonth)} — ${formatMonth(language, endYear, endMonth)}`;
+}
+
 function formatNumber(language: Language, value: number): string {
   return value.toLocaleString(localeFor(language));
+}
+
+function formatVisitCount(language: Language, value: number): string {
+  const count = formatNumber(language, value);
+  if (language === "ko") return `${count}번 방문`;
+  if (language === "ja") return `${count}回訪問`;
+  return `${count} visits`;
 }
 
 function canvasText(
@@ -353,7 +452,7 @@ function canvasText(
   return `${shortened}…`;
 }
 
-function drawContainedImage(
+function drawCoveredImage(
   context: CanvasRenderingContext2D,
   image: HTMLImageElement,
   x: number,
@@ -363,9 +462,13 @@ function drawContainedImage(
 ) {
   context.fillStyle = "#0d0d0c";
   context.fillRect(x, y, width, height);
-  const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+  const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
   const drawWidth = image.naturalWidth * scale;
   const drawHeight = image.naturalHeight * scale;
+  context.save();
+  context.beginPath();
+  context.rect(x, y, width, height);
+  context.clip();
   context.drawImage(
     image,
     x + (width - drawWidth) / 2,
@@ -373,6 +476,7 @@ function drawContainedImage(
     drawWidth,
     drawHeight,
   );
+  context.restore();
   context.strokeStyle = "rgba(241,237,229,.24)";
   context.lineWidth = 2;
   context.strokeRect(x, y, width, height);
@@ -404,13 +508,40 @@ async function createShareCardBlob(
   const special = journey.stats.specialPerson;
   const specialName = special?.displayName ?? t.specialGeneric;
   const topWorldResult = journey.stats.topWorlds[0];
-  const topWorld = topWorldResult?.displayName ?? t.noWorld;
-  const topMonth = formatMonth(
-    language,
-    journey.stats.topMonth.year,
-    journey.stats.topMonth.month,
-  );
-  const loadedPhotos = await Promise.all(photos.slice(0, 3).map((photo) => loadShareImage(photo.url)));
+  const topWorld = topWorldResult
+    ? recapPlaceName(language, topWorldResult, t.familiarScene(1))
+    : t.noWorld;
+  const peopleSummaryLabel = journey.stats.people.length > 0
+    ? t.peopleCount
+    : journey.stats.recurringPeople > 0
+      ? t.visualPeopleCount
+      : t.activeMonths;
+  const peopleSummaryValue = journey.stats.people.length > 0
+    ? journey.stats.people.length
+    : journey.stats.recurringPeople > 0
+      ? journey.stats.recurringPeople
+      : journey.stats.activeMonths;
+  const usesTopDay = journey.stats.topPeriod === "day";
+  const topPeriodLabel = usesTopDay ? t.topDay : t.topMonth;
+  const topPeriodName = usesTopDay
+    ? formatCalendarDay(
+      language,
+      journey.stats.topDay.year,
+      journey.stats.topDay.month,
+      journey.stats.topDay.day,
+    )
+    : formatMonth(
+      language,
+      journey.stats.topMonth.year,
+      journey.stats.topMonth.month,
+    );
+  const topPeriodPhotoCount = usesTopDay
+    ? journey.stats.topDay.photoCount
+    : journey.stats.topMonth.photoCount;
+  const shareTitleFontSize = language === "en" ? 67 : language === "ko" ? 59 : 54;
+  const shareLeadFontSize = language === "en" ? 24 : language === "ko" ? 22 : 21;
+  const shareValueFontSize = language === "en" ? 27 : language === "ko" ? 24 : 22;
+  const loadedPhotos = await Promise.all(photos.slice(0, 4).map((photo) => loadShareImage(photo.url)));
 
   context.fillStyle = "#171715";
   context.fillRect(0, 0, canvas.width, canvas.height);
@@ -431,87 +562,110 @@ async function createShareCardBlob(
   context.textAlign = "left";
   context.fillStyle = "#f1ede5";
   context.font = "800 22px Segoe UI, sans-serif";
-  context.fillText("VRCHAT RECAP", 164, 93);
+  context.fillText("VRC RECAP", 164, 93);
   context.fillStyle = "#a7a096";
   context.font = "600 15px Segoe UI, sans-serif";
   context.fillText(
-    `${new Date(journey.startDate).getFullYear()} — ${new Date(journey.endDate).getFullYear()}`,
+    formatMonthRange(language, journey.startDate, journey.endDate),
     164,
     126,
   );
 
   context.fillStyle = "#fffaf0";
-  context.font = "400 67px Georgia, Noto Serif KR, Yu Mincho, serif";
+  context.font = `400 ${shareTitleFontSize}px Georgia, Noto Serif KR, Yu Mincho, serif`;
   const title = canvasText(context, t.shareCardTitle(selfName), 690);
   context.fillText(title, 70, 230);
   context.fillStyle = "#d5cec3";
-  context.font = "400 24px Segoe UI, sans-serif";
+  context.font = `400 ${shareLeadFontSize}px Segoe UI, sans-serif`;
   context.fillText(canvasText(context, t.recapLead(journey.stats.activeDays), 690), 72, 274);
 
   context.fillStyle = "#fffaf0";
   context.font = "400 118px Georgia, serif";
-  context.fillText(formatNumber(language, journey.totalPhotos), 70, 430);
+  const photoCountText = formatNumber(language, journey.totalPhotos);
+  context.fillText(photoCountText, 70, 430);
+  const photoCountWidth = context.measureText(photoCountText).width;
   context.fillStyle = "#d7836c";
   context.font = "800 17px Segoe UI, sans-serif";
-  context.fillText(t.photoCount.toLocaleUpperCase(localeFor(language)), 76, 469);
+  context.fillText(
+    t.photoCount.toLocaleUpperCase(localeFor(language)),
+    94 + photoCountWidth,
+    448,
+  );
 
   const summary = [
     {
-      label: t.topWorld,
+      label: topWorldResult?.inference === "visual"
+        ? t.topScene
+        : topWorldResult?.inference === "temporal"
+          ? t.topPeriod
+          : t.topWorld,
       value: topWorldResult
-        ? t.shareWorldValue(topWorld, topWorldResult.visitCount)
+        ? topWorldResult.inference !== "metadata"
+          ? t.shareSceneValue(topWorld, topWorldResult.activeDays)
+          : t.shareWorldValue(topWorld, topWorldResult.activeDays)
         : topWorld,
     },
     {
       label: t.specialLabel,
       value: special
-        ? t.shareSpecialValue(specialName, special.pairPhotos)
-        : specialName,
+        ? t.shareSpecialValue(specialName, special.pairDays)
+        : "—",
     },
     {
-      label: t.topMonth,
-      value: t.shareMonthValue(topMonth, journey.stats.topMonth.photoCount),
+      label: topPeriodLabel,
+      value: t.shareMonthValue(topPeriodName, topPeriodPhotoCount),
     },
     {
       label: t.activeDays,
       value: formatNumber(language, journey.stats.activeDays),
+    },
+    {
+      label: t.topHour,
+      value: formatHour(language, journey.stats.topHour),
+    },
+    {
+      label: peopleSummaryLabel,
+      value: formatNumber(language, peopleSummaryValue),
     },
   ];
   summary.forEach((item, index) => {
     const column = index % 2;
     const row = Math.floor(index / 2);
     const x = 70 + column * 348;
-    const y = 540 + row * 118;
+    const y = 510 + row * 102;
     context.strokeStyle = "rgba(241,237,229,.18)";
-    context.strokeRect(x, y, 318, 90);
+    context.strokeRect(x, y, 318, 78);
     context.fillStyle = "#8f8980";
     context.font = "700 13px Segoe UI, sans-serif";
-    context.fillText(canvasText(context, item.label, 278), x + 18, y + 27);
+    context.fillText(canvasText(context, item.label, 278), x + 18, y + 23);
     context.fillStyle = "#fffaf0";
-    context.font = "400 27px Georgia, Noto Serif KR, Yu Mincho, serif";
-    context.fillText(canvasText(context, item.value, 278), x + 18, y + 64);
+    context.font = `400 ${shareValueFontSize}px Georgia, Noto Serif KR, Yu Mincho, serif`;
+    context.fillText(canvasText(context, item.value, 278), x + 18, y + 57);
   });
 
-  const names = journey.stats.people.slice(0, 4).map((person) => person.displayName);
+  const names = journey.stats.people
+    .slice(0, 4)
+    .map((person, index) => person.displayName ?? t.familiarPerson(index + 1));
   if (names.length) {
     context.fillStyle = "#8f8980";
     context.font = "700 13px Segoe UI, sans-serif";
-    context.fillText(t.topPeople, 70, 802);
+    context.fillText(t.topPeople, 70, 824);
     context.fillStyle = "#d8d1c6";
     context.font = "400 20px Segoe UI, sans-serif";
-    context.fillText(canvasText(context, names.join(" · "), 660), 70, 836);
+    context.fillText(canvasText(context, names.join(" · "), 660), 70, 854);
   }
 
   const photoRects = [
-    [820, 70, 710, 430],
-    [820, 530, 340, 300],
-    [1190, 530, 340, 300],
+    [820, 70, 330, 335],
+    [1200, 70, 330, 335],
+    [820, 455, 330, 335],
+    [1200, 455, 330, 335],
   ] as const;
   loadedPhotos.forEach((image, index) => {
     const [x, y, width, height] = photoRects[index];
     context.fillStyle = "#f1ede5";
     context.fillRect(x - 10, y - 10, width + 20, height + 42);
-    drawContainedImage(context, image, x, y, width, height);
+    drawCoveredImage(context, image, x, y, width, height);
   });
 
   context.fillStyle = "#a84632";
@@ -519,7 +673,7 @@ async function createShareCardBlob(
   context.fillStyle = "#8f8980";
   context.font = "700 13px Segoe UI, sans-serif";
   context.textAlign = "right";
-  context.fillText("#VRChatRecap", 1530, 850);
+  context.fillText("#VRCRecap", 1530, 850);
 
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
@@ -594,7 +748,7 @@ function Brand() {
   return (
     <a className="memory-brand" href="#top">
       <span>VR</span>
-      <b>VRCHAT RECAP</b>
+      <b>VRC RECAP</b>
     </a>
   );
 }
@@ -686,6 +840,9 @@ function loadingMessage(language: Language, progress: AnalysisProgress): string 
   if (progress.photo?.twoPersonMoment) return t.foundPair;
   if (progress.photo?.nicknames[0]) return t.foundPerson(progress.photo.nicknames[0]);
   if (progress.photo?.worldName) return t.foundWorld(progress.photo.worldName);
+  if (progress.photo?.visualSubjects) {
+    return t.foundVisualPerson(progress.photo.visualSubjects);
+  }
   return progress.photo ? formatDate(language, progress.photo.date) : t.unknownDate;
 }
 
@@ -727,7 +884,11 @@ function Analyzing({
               <figcaption>
                 <time>{formatDate(language, current.date)}</time>
                 <b>{current.worldName ?? t.noWorld}</b>
-                {current.nicknames.length > 0 && <span>{current.nicknames.join(" · ")}</span>}
+                {current.nicknames.length > 0
+                  ? <span>{current.nicknames.join(" · ")}</span>
+                  : current.visualSubjects > 0
+                    ? <span>{t.visualSubjects(current.visualSubjects)}</span>
+                    : null}
               </figcaption>
             </figure>
           ) : (
@@ -759,7 +920,7 @@ function Analyzing({
               <span>{t.discoveredPeople}</span>
             </article>
             <article>
-              <b>{formatNumber(language, progress.discoveries.photosWithTwoPeople)}</b>
+              <b>{formatNumber(language, progress.discoveries.daysWithTwoPeople)}</b>
               <span>{t.statPair}</span>
             </article>
           </div>
@@ -768,7 +929,12 @@ function Analyzing({
             <div>
               {progress.discoveries.topNames.length
                 ? progress.discoveries.topNames.map((name) => <b key={name}>{name}</b>)
-                : <p>{t.noNamesYet}</p>}
+                : progress.discoveries.visualPeople > 0
+                  ? Array.from(
+                    { length: Math.min(4, progress.discoveries.visualPeople) },
+                    (_, index) => <b key={index}>{t.familiarPerson(index + 1)}</b>,
+                  )
+                  : <p>{t.noNamesYet}</p>}
             </div>
           </div>
         </div>
@@ -798,10 +964,17 @@ function PhotoFrame({
   prominent?: boolean;
 }) {
   const t = COPY[language];
+  const place = photo.worldName
+    ?? (photo.visualSceneRank ? t.familiarScene(photo.visualSceneRank) : t.noWorld);
+  const people = photo.nicknames.length > 0
+    ? photo.nicknames.join(" · ")
+    : photo.visualSubjects > 0
+      ? t.visualSubjects(photo.visualSubjects)
+      : undefined;
   const details = [
     formatDate(language, photo.date),
-    photo.worldName,
-    photo.nicknames.join(" · "),
+    place,
+    people,
   ].filter(Boolean).join(", ");
   return (
     <figure className={`recap-photo-frame ${prominent ? "prominent" : ""}`}>
@@ -810,8 +983,8 @@ function PhotoFrame({
       </div>
       <figcaption>
         <time>{formatDate(language, photo.date)}</time>
-        <b>{photo.worldName ?? t.noWorld}</b>
-        {photo.nicknames.length > 0 && <span>{photo.nicknames.join(" · ")}</span>}
+        <b>{place}</b>
+        {people && <span>{people}</span>}
       </figcaption>
     </figure>
   );
@@ -831,15 +1004,15 @@ function Recap({
   const t = COPY[language];
   const [shareBusy, setShareBusy] = useState(false);
   const [shareStatus, setShareStatus] = useState<
-    "failed" | "preparing" | "saved" | "success" | null
+    "failed" | "preparing" | "saved" | null
   >(null);
   const photos = useMemo(
     () => new Map(journey.photos.map((photo) => [photo.id, photo])),
     [journey.photos],
   );
   const coverPhoto = photos.get(journey.coverPhotoId) ?? journey.photos[0];
-  const peakMonthPhoto = journey.peakMonthPhotoId
-    ? photos.get(journey.peakMonthPhotoId)
+  const peakPeriodPhoto = journey.peakPeriodPhotoId
+    ? photos.get(journey.peakPeriodPhotoId)
     : undefined;
   const timelinePhotos = journey.timelinePhotoIds
     .map((id) => photos.get(id))
@@ -852,47 +1025,86 @@ function Recap({
     [photos, special],
   );
   const selfName = journey.stats.self?.displayName;
+  const selfPhoto = journey.stats.self?.photoId
+    ? photos.get(journey.stats.self.photoId)
+    : undefined;
+  const worldPhotos = journey.stats.topWorlds
+    .map((world) => world.photoId ? photos.get(world.photoId) : undefined)
+    .filter((photo): photo is RecapPhoto => Boolean(photo));
   const summaryPhotos = Array.from(new Map(
     [
       coverPhoto,
-      specialPhotos[0],
-      peakMonthPhoto,
+      peakPeriodPhoto,
+      worldPhotos[0],
+      worldPhotos[1],
+      timelinePhotos[Math.floor(timelinePhotos.length / 2)],
       timelinePhotos.at(-1),
+      timelinePhotos[0],
+      specialPhotos[0],
+      specialPhotos[1],
     ]
       .filter((photo): photo is RecapPhoto => Boolean(photo))
       .map((photo) => [photo.id, photo]),
-  ).values());
+  ).values()).slice(0, 4);
   const specialName = special?.displayName ?? (special ? t.specialGeneric : undefined);
   const topWorldResult = journey.stats.topWorlds[0];
-  const topWorld = topWorldResult?.displayName;
-  const topMonthValue = t.shareMonthValue(
-    formatMonth(
+  const topWorld = topWorldResult
+    ? recapPlaceName(language, topWorldResult, t.familiarScene(1))
+    : undefined;
+  const peopleLabels = journey.stats.people.map(
+    (person, index) => person.displayName ?? t.familiarPerson(index + 1),
+  );
+  const usesVisualPeople = journey.stats.self?.inference === "visual"
+    || (journey.stats.people.length > 0
+      && journey.stats.people.every((person) => person.inference === "visual"));
+  const usesVisualWorlds = journey.stats.topWorlds.length > 0
+    && journey.stats.topWorlds.every((world) => world.inference === "visual");
+  const usesTemporalWorlds = journey.stats.topWorlds.length > 0
+    && journey.stats.topWorlds.every((world) => world.inference === "temporal");
+  const usesTopDay = journey.stats.topPeriod === "day";
+  const topPeriodLabel = usesTopDay ? t.topDay : t.topMonth;
+  const topPeriodName = usesTopDay
+    ? formatCalendarDay(
+      language,
+      journey.stats.topDay.year,
+      journey.stats.topDay.month,
+      journey.stats.topDay.day,
+    )
+    : formatMonth(
       language,
       journey.stats.topMonth.year,
       journey.stats.topMonth.month,
-    ),
-    journey.stats.topMonth.photoCount,
-  );
+    );
+  const topPeriodPhotoCount = usesTopDay
+    ? journey.stats.topDay.photoCount
+    : journey.stats.topMonth.photoCount;
+  const topPeriodValue = t.shareMonthValue(topPeriodName, topPeriodPhotoCount);
   const topWorldValue = topWorldResult
-    ? t.shareWorldValue(topWorldResult.displayName, topWorldResult.visitCount)
+    ? topWorldResult.inference !== "metadata"
+      ? t.shareSceneValue(topWorld ?? t.familiarScene(1), topWorldResult.activeDays)
+      : t.shareWorldValue(topWorld ?? t.noWorld, topWorldResult.activeDays)
     : t.noWorld;
   const specialValue = special
-    ? t.shareSpecialValue(specialName ?? t.specialGeneric, special.pairPhotos)
+    ? t.shareSpecialValue(specialName ?? t.specialGeneric, special.pairDays)
     : "—";
-  const rawShareMessage = t.sharePost(journey.totalPhotos, topWorld, specialName);
-  const shareMessage = rawShareMessage.length > 250
-    ? `${rawShareMessage.replace(/\s*#VRChatRecap$/, "").slice(0, 228).trim()}… #VRChatRecap`
-    : rawShareMessage;
-  const shareFileName = `vrchat-recap-${new Date(journey.endDate).getFullYear()}.png`;
+  const peopleSummaryLabel = journey.stats.people.length > 0
+    ? t.peopleCount
+    : journey.stats.recurringPeople > 0
+      ? t.visualPeopleCount
+      : t.activeMonths;
+  const peopleSummaryValue = journey.stats.people.length > 0
+    ? journey.stats.people.length
+    : journey.stats.recurringPeople > 0
+      ? journey.stats.recurringPeople
+      : journey.stats.activeMonths;
+  const shareFileName = `vrc-recap-${new Date(journey.endDate).getFullYear()}.png`;
   const shareStatusText = shareStatus === "preparing"
     ? t.sharePreparing
     : shareStatus === "saved"
       ? t.shareSaved
-      : shareStatus === "success"
-        ? t.shareSuccess
-        : shareStatus === "failed"
-          ? t.shareFailed
-          : null;
+      : shareStatus === "failed"
+        ? t.shareFailed
+        : null;
 
   const saveShareImage = async () => {
     if (shareBusy) return;
@@ -907,50 +1119,6 @@ function Recap({
     } finally {
       setShareBusy(false);
     }
-  };
-
-  const shareImage = async () => {
-    if (shareBusy) return;
-    setShareBusy(true);
-    setShareStatus("preparing");
-    try {
-      const blob = await createShareCardBlob(journey, language, summaryPhotos);
-      const file = new File([blob], shareFileName, { type: "image/png" });
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          text: shareMessage,
-          title: t.shareCardTitle(selfName),
-        });
-        setShareStatus("success");
-      } else {
-        downloadBlob(blob, shareFileName);
-        setShareStatus("saved");
-      }
-    } catch (shareError) {
-      if (shareError instanceof DOMException && shareError.name === "AbortError") {
-        setShareStatus(null);
-      } else {
-        setShareStatus("failed");
-      }
-    } finally {
-      setShareBusy(false);
-    }
-  };
-
-  const openXShare = () => {
-    const parameters = new URLSearchParams({ text: shareMessage });
-    const isLocalHost = window.location.hostname === "localhost"
-      || window.location.hostname === "127.0.0.1";
-    if (!isLocalHost && /^https?:$/.test(window.location.protocol)) {
-      parameters.set("url", `${window.location.origin}${window.location.pathname}`);
-    }
-    window.open(
-      `https://twitter.com/intent/tweet?${parameters.toString()}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
-    setShareStatus("success");
   };
 
   return (
@@ -974,7 +1142,7 @@ function Recap({
         </div>
         <div className="recap-cover-copy">
           <p className="memory-kicker">{t.recapEyebrow}</p>
-          <span>{new Date(journey.startDate).getFullYear()} — {new Date(journey.endDate).getFullYear()}</span>
+          <span>{formatMonthRange(language, journey.startDate, journey.endDate)}</span>
           <h1>{t.recapTitle(selfName)}</h1>
           <p>{t.recapLead(journey.stats.activeDays)}</p>
           <small>{t.scroll}</small>
@@ -991,23 +1159,21 @@ function Recap({
           <span>{t.activeDays}</span>
         </article>
         <article>
-          <b>{t.seasonNames[journey.stats.topSeason]}</b>
-          <span>{t.topSeason}</span>
+          <b>{formatHour(language, journey.stats.topHour)}</b>
+          <span>{t.topHour}</span>
         </article>
       </section>
 
       <section className="recap-chapter peak-month-chapter">
         <div className="chapter-copy">
           <p className="chapter-number">01</p>
-          <span>{t.topMonth}</span>
-          <h2>{formatMonth(
-            language,
-            journey.stats.topMonth.year,
-            journey.stats.topMonth.month,
-          )}</h2>
-          <p>{t.monthStory(journey.stats.topMonth.photoCount)}</p>
+          <span>{topPeriodLabel}</span>
+          <h2>{topPeriodName}</h2>
+          <p>{usesTopDay
+            ? t.dayStory(topPeriodPhotoCount)
+            : t.monthStory(topPeriodPhotoCount)}</p>
         </div>
-        {peakMonthPhoto && <PhotoFrame language={language} photo={peakMonthPhoto} prominent />}
+        {peakPeriodPhoto && <PhotoFrame language={language} photo={peakPeriodPhoto} prominent />}
       </section>
 
       {journey.stats.topWorlds.length > 0 && (
@@ -1016,21 +1182,41 @@ function Recap({
             <p className="chapter-number">02</p>
             <div>
               <span>PLACES</span>
-              <h2>{t.worldsTitle}</h2>
-              <p>{t.worldBody}</p>
+              <h2>{usesVisualWorlds
+                ? t.visualWorldsTitle
+                : usesTemporalWorlds
+                  ? t.temporalWorldsTitle
+                  : t.worldsTitle}</h2>
+              <p>{usesVisualWorlds
+                ? t.visualWorldBody
+                : usesTemporalWorlds
+                  ? t.temporalWorldBody
+                  : t.worldBody}</p>
             </div>
           </div>
           <div className="world-memory-grid">
             {journey.stats.topWorlds.map((world, index) => {
               const photo = world.photoId ? photos.get(world.photoId) : undefined;
+              const worldLabel = recapPlaceName(
+                language,
+                world,
+                t.familiarScene(index + 1),
+              );
               return (
-                <article key={world.displayName}>
+                <article key={world.id}>
                   {photo && <img src={photo.url} alt="" />}
                   <div>
                     <span>{String(index + 1).padStart(2, "0")}</span>
-                    <h3>{world.displayName}</h3>
+                    <h3>{worldLabel}</h3>
                     <p>
-                      <b>{formatNumber(language, world.visitCount)}</b> {t.visits}
+                      {world.inference === "metadata" ? (
+                        <b>{formatVisitCount(language, world.activeDays)}</b>
+                      ) : (
+                        <>
+                          <b>{formatNumber(language, world.activeDays)}</b>{" "}
+                          {world.inference === "temporal" ? t.activeDays : t.sceneDays}
+                        </>
+                      )}
                       <i>·</i>
                       {formatNumber(language, world.photoCount)} {t.worldPhotos}
                     </p>
@@ -1047,14 +1233,16 @@ function Recap({
           <p className="chapter-number">03</p>
           <div>
             <span>{t.topPeople}</span>
-            <h2>{t.peopleTitle}</h2>
-            <p>{t.peopleBody}</p>
+            <h2>{usesVisualPeople ? t.visualPeopleTitle : t.peopleTitle}</h2>
+            <p>{usesVisualPeople ? t.visualPeopleBody : t.peopleBody}</p>
           </div>
         </div>
 
         {journey.stats.self && (
           <div className="self-memory">
-            <span>{journey.stats.self.displayName?.slice(0, 1) ?? "✦"}</span>
+            {selfPhoto
+              ? <img src={selfPhoto.url} alt="" />
+              : <span>{journey.stats.self.displayName?.slice(0, 1) ?? "✦"}</span>}
             <p>
               {journey.stats.self.displayName
                 ? t.selfBody(journey.stats.self.displayName, journey.stats.self.photoCount)
@@ -1066,17 +1254,20 @@ function Recap({
         {journey.stats.people.length > 0 ? (
           <div className="people-ribbon">
             {journey.stats.people.map((person, index) => (
-              <article key={person.displayName}>
+              <article key={person.id}>
+                {person.photoId && photos.get(person.photoId) && (
+                  <img src={photos.get(person.photoId)!.url} alt="" />
+                )}
                 <span>{String(index + 1).padStart(2, "0")}</span>
-                <h3>{person.displayName}</h3>
+                <h3>{peopleLabels[index]}</h3>
                 <p>{formatNumber(language, person.photoCount)} {t.worldPhotos}</p>
                 <small>{formatNumber(language, person.activeDays)} {t.activeDays}</small>
               </article>
             ))}
           </div>
-        ) : (
+        ) : !journey.stats.self ? (
           <p className="recap-empty">{t.emptyPeople}</p>
-        )}
+        ) : null}
       </section>
 
       {special && (
@@ -1093,10 +1284,10 @@ function Recap({
               <p>{t.specialLabel}</p>
               <h2>{t.specialTitle(special.displayName)}</h2>
               <span>{special.displayName ?? t.specialGeneric}</span>
-              <blockquote>{t.specialBody(special.pairPhotos)}</blockquote>
+              <blockquote>{t.specialBody(special.pairDays)}</blockquote>
               <div className="special-stats">
                 <article>
-                  <b>{formatNumber(language, special.pairPhotos)}</b>
+                  <b>{formatNumber(language, special.pairDays)}</b>
                   <span>{t.statPair}</span>
                 </article>
                 <article>
@@ -1110,7 +1301,7 @@ function Recap({
                   </article>
                 )}
                 <article>
-                  <b>{formatDate(language, special.firstDate, "short")} — {formatDate(language, special.lastDate, "short")}</b>
+                  <b>{formatCompactDate(special.firstDate)} — {formatCompactDate(special.lastDate)}</b>
                   <span>{t.statFirstLast}</span>
                 </article>
               </div>
@@ -1160,9 +1351,9 @@ function Recap({
           <div className="share-summary-copy">
             <div className="share-summary-brand">
               <i>VR</i>
-              <span>VRCHAT RECAP</span>
+              <span>VRC RECAP</span>
             </div>
-            <p>{new Date(journey.startDate).getFullYear()} — {new Date(journey.endDate).getFullYear()}</p>
+            <p>{formatMonthRange(language, journey.startDate, journey.endDate)}</p>
             <h3>{t.shareCardTitle(selfName)}</h3>
             <div className="share-primary-number">
               <b>{formatNumber(language, journey.totalPhotos)}</b>
@@ -1174,54 +1365,49 @@ function Recap({
                 <b>{formatNumber(language, journey.stats.activeDays)}</b>
               </article>
               <article>
-                <span>{t.topMonth}</span>
-                <b>{topMonthValue}</b>
+                <span>{topPeriodLabel}</span>
+                <b>{topPeriodValue}</b>
               </article>
               <article>
-                <span>{t.topWorld}</span>
+                <span>{topWorldResult?.inference === "visual"
+                  ? t.topScene
+                  : topWorldResult?.inference === "temporal"
+                    ? t.topPeriod
+                    : t.topWorld}</span>
                 <b>{topWorldValue}</b>
               </article>
               <article>
                 <span>{t.specialLabel}</span>
                 <b>{specialValue}</b>
               </article>
+              <article>
+                <span>{t.topHour}</span>
+                <b>{formatHour(language, journey.stats.topHour)}</b>
+              </article>
+              <article>
+                <span>{peopleSummaryLabel}</span>
+                <b>{formatNumber(language, peopleSummaryValue)}</b>
+              </article>
             </div>
             {journey.stats.people.length > 0 && (
               <div className="share-people">
                 <span>{t.topPeople}</span>
-                <p>{journey.stats.people.slice(0, 4).map((person) => person.displayName).join(" · ")}</p>
+                <p>{peopleLabels.slice(0, 4).join(" · ")}</p>
               </div>
             )}
           </div>
 
           <div className="share-summary-photos" aria-label={t.galleryLabel}>
-            {summaryPhotos.slice(0, 3).map((photo, index) => (
+            {summaryPhotos.map((photo, index) => (
               <figure className={`share-photo-${index + 1}`} key={photo.id}>
                 <img src={photo.url} alt="" />
               </figure>
             ))}
-            <b>#VRChatRecap</b>
+            <b>#VRCRecap</b>
           </div>
         </div>
 
         <div className="share-actions">
-          <button
-            className="share-native-button"
-            disabled={shareBusy}
-            onClick={() => void shareImage()}
-            type="button"
-          >
-            {t.shareImage}
-          </button>
-          <button
-            className="share-x-button"
-            disabled={shareBusy}
-            onClick={openXShare}
-            type="button"
-          >
-            <b>X</b>
-            {t.xShare}
-          </button>
           <button
             className="share-save-button"
             disabled={shareBusy}
@@ -1295,6 +1481,7 @@ export default function MemoryWalk() {
       fileName: photo.file.name,
       nicknames: photo.nicknames,
       url: URL.createObjectURL(photo.file),
+      visualSubjects: photo.visualSubjects,
       worldName: photo.worldName,
     };
     const next = [nextPreview, ...previewsRef.current].slice(0, 8);

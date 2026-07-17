@@ -45,9 +45,9 @@ test("keeps technical model language out of every user-facing recap string", asy
   const app = await readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(app, /MediaPipe|EfficientDet|BlazeFace|ObjectDetector|FaceDetector|LOCAL MODEL|AI PASS|로컬 모델|로컬 AI|양자화|익명화|추론 엔진/i);
   assert.match(app, /YOUR PHOTOS · YOUR PEOPLE · YOUR WORLDS/);
-  assert.match(app, /둘만 남긴 순간을 발견했어요/);
-  assert.match(app, /A memory of just the two of you/);
-  assert.match(app, /ふたりだけで残した一枚/);
+  assert.match(app, /서로 다른 날에 둘만 남긴 순간/);
+  assert.match(app, /across different days/);
+  assert.match(app, /別の日にも続く/);
 });
 
 test("supports Korean, English, and Japanese without translating metadata values", async () => {
@@ -61,6 +61,22 @@ test("supports Korean, English, and Japanese without translating metadata values
   assert.match(app, /new Intl\.DateTimeFormat\(localeFor\(language\)/);
 });
 
+test("uses smaller CJK display type and phrase-aware wrapping", async () => {
+  const [app, css] = await Promise.all([
+    readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(css, /html:lang\(ko\) body,[\s\S]*html:lang\(ja\) body \{[\s\S]*line-break: strict;[\s\S]*word-break: keep-all;/);
+  assert.match(css, /@supports \(word-break: auto-phrase\)[\s\S]*word-break: auto-phrase;/);
+  assert.match(css, /html:lang\(ko\) \.memory-hero h1 \{[\s\S]*font-size: clamp\(54px, 7\.1vw, 112px\)/);
+  assert.match(css, /html:lang\(ja\) \.memory-hero h1 \{[\s\S]*font-size: clamp\(50px, 6\.6vw, 104px\)/);
+  assert.match(css, /html:lang\(ko\) \.share-summary-copy h3 \{[\s\S]*white-space: normal;/);
+  assert.match(css, /html:lang\(ja\) \.share-summary-copy h3 \{[\s\S]*white-space: normal;/);
+  assert.match(app, /const shareTitleFontSize = language === "en" \? 67 : language === "ko" \? 59 : 54/);
+  assert.match(app, /const shareValueFontSize = language === "en" \? 27 : language === "ko" \? 24 : 22/);
+});
+
 test("shows real photos, names, worlds, and discoveries while processing", async () => {
   const [app, analyzer] = await Promise.all([
     readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8"),
@@ -70,7 +86,7 @@ test("shows real photos, names, worlds, and discoveries while processing", async
   assert.match(analyzer, /file,/);
   assert.match(analyzer, /nicknames: participants\.map/);
   assert.match(analyzer, /worldName: record\.worldName/);
-  assert.match(analyzer, /discoveries\.photosWithTwoPeople/);
+  assert.match(analyzer, /discoveries\.daysWithTwoPeople/);
   assert.match(app, /URL\.createObjectURL\(photo\.file\)/);
   assert.match(app, /loading-filmstrip/);
   assert.match(app, /current\.nicknames\.join\(" · "\)/);
@@ -90,39 +106,92 @@ test("infers self and the standout two-person relationship from metadata", async
   assert.match(analyzer, /inferMetadataPeople\(records\)/);
   assert.match(inference, /sort\(\(a, b\) => b\.photoCount - a\.photoCount/);
   assert.match(inference, /photo\.participants\.length !== 2/);
-  assert.match(inference, /pairPhotoIds\.push\(photo\.id\)/);
+  assert.match(inference, /pairPhotoByDay\.set\(day, photo\.id\)/);
+  assert.match(inference, /pairDayPhotoIds\.length >= 2/);
   assert.match(inference, /const special = results/);
   assert.match(analyzer, /displayName: specialMetadataPerson\.name/);
 });
 
-test("falls back to metadata when face processing is unavailable and uses recurring faces when metadata is absent", async () => {
-  const [analyzer, inference, localVision, packageJson, model, wasm] = await Promise.all([
+test("builds meaningful people and place results from local visual analysis when metadata is absent", async () => {
+  const [
+    app,
+    analyzer,
+    inference,
+    localVision,
+    packageJson,
+    faceModel,
+    objectModel,
+    embeddingModel,
+    wasm,
+  ] = await Promise.all([
+    readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/memory.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/recapInference.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/localVision.ts", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     stat(new URL("../public/models/blaze_face_short_range.tflite", import.meta.url)),
+    stat(new URL("../public/models/efficientdet_lite0_uint8.tflite", import.meta.url)),
+    stat(new URL("../public/models/mobilenet_v3_small.tflite", import.meta.url)),
     stat(new URL("../public/mediapipe/wasm/vision_wasm_internal.wasm", import.meta.url)),
   ]);
 
   assert.match(packageJson, /@mediapipe\/tasks-vision/);
   assert.match(localVision, /FaceDetector\.createFromOptions/);
+  assert.match(localVision, /ObjectDetector\.createFromOptions/);
+  assert.match(localVision, /ImageEmbedder\.createFromOptions/);
   assert.match(localVision, /modelAssetPath: "\/models\/blaze_face_short_range\.tflite"/);
+  assert.match(localVision, /modelAssetPath: "\/models\/efficientdet_lite0_uint8\.tflite"/);
+  assert.match(localVision, /modelAssetPath: "\/models\/mobilenet_v3_small\.tflite"/);
+  assert.match(localVision, /categoryAllowlist: \["person"\]/);
+  assert.match(localVision, /minDetectionConfidence: 0\.18/);
+  assert.match(localVision, /scoreThreshold: 0\.08/);
+  assert.match(localVision, /mergeCandidates\(faceCandidates, personCandidates\)/);
+  assert.match(localVision, /source: "portrait"/);
   assert.match(localVision, /FilesetResolver\.forVisionTasks\("\/mediapipe\/wasm"\)/);
-  assert.match(localVision, /descriptor/);
-  assert.match(localVision, /mirroredDescriptor/);
+  assert.match(localVision, /sceneDescriptor/);
+  assert.match(localVision, /candidateFramingScore/);
+  assert.match(localVision, /selfieScore/);
+  assert.match(localVision, /regionOfInterest/);
   assert.doesNotMatch(localVision, /https?:\/\//);
-  assert.ok(model.size > 200_000);
+  assert.ok(faceModel.size > 200_000);
+  assert.ok(objectModel.size > 4_000_000);
+  assert.ok(embeddingModel.size > 4_000_000);
   assert.ok(wasm.size > 9_000_000);
 
-  assert.match(analyzer, /try \{\s*faceDetector = await createLocalFaceDetector\(\);\s*\} catch \{\s*faceDetector = null;/s);
-  assert.match(analyzer, /faceDetector && participants\.length === 0/);
-  assert.match(analyzer, /assignFaceClusters/);
-  assert.match(analyzer, /inferRecurringFaces\(faceClusters, records, Boolean\(self\)\)/);
+  assert.match(analyzer, /visualAnalyzer = await createLocalVisualAnalyzer\(\)/);
+  assert.match(analyzer, /record\.selfieScore = result\.selfieScore/);
+  assert.match(analyzer, /representativePhoto\(records,/);
+  assert.match(analyzer, /function isSelfAlone/);
+  assert.match(analyzer, /photo\.participants\.length === 1/);
+  assert.match(analyzer, /photo\.subjectClusterIds\.length === 1/);
+  assert.match(analyzer, /photo\.selfieScore - best\.photo\.selfieScore/);
+  assert.match(analyzer, /assignSubjectClusters/);
+  assert.match(analyzer, /assignSceneCluster/);
+  assert.match(analyzer, /inferRecurringScenes\(sceneClusters\)/);
+  assert.match(analyzer, /b\.days\.size - a\.days\.size/);
+  assert.match(analyzer, /const visualPeople = faceInference\.visualPeople/);
+  assert.match(analyzer, /const recapPeople = metadataPeople\.length \? metadataPeople : visualPeople/);
+  assert.match(analyzer, /inferTemporalScenes\(records\)/);
+  assert.match(analyzer, /selectSceneResults\([\s\S]*metadataWorldEntries,[\s\S]*visualWorldEntries,[\s\S]*temporalWorldEntries/);
+  assert.match(analyzer, /visualPersonRepresentativeRecords/);
+  assert.match(analyzer, /photoId: visualPersonRepresentativeRecords\.get\(person\.id\)\?\.id/);
+  assert.match(analyzer, /photoId: visualSelfRecord\?\.id/);
+  assert.match(analyzer, /activeMonths: monthCounts\.size/);
+  assert.match(analyzer, /schema: "vrchat-recap\/v11"/);
+  assert.match(analyzer, /summarizeRecapPeriods\(records\)/);
   assert.match(inference, /recurringClusters/);
+  assert.match(inference, /cluster\.days\.size >= 2/);
   assert.match(inference, /const selfFaceId = recurringClusters\[0\]\.id/);
-  assert.match(inference, /const pairPhotos = new Map/);
-  assert.match(analyzer, /inference: "faces"/);
+  assert.match(inference, /const pairPhotoByDay = new Map/);
+  assert.match(inference, /Array\.from\(new Set\(photo\.faceClusterIds\)\)/);
+  assert.match(inference, /ids\.length !== 2/);
+  assert.match(inference, /export function inferRecurringScenes/);
+  assert.match(app, /familiarPerson: \(rank: number\)/);
+  assert.match(app, /familiarScene: \(rank: number\)/);
+  assert.match(app, /visualPeopleTitle/);
+  assert.match(app, /visualWorldsTitle/);
+  assert.match(app, /temporalWorldsTitle/);
+  assert.match(app, /selfPhoto/);
 });
 
 test("uses original selected photos while keeping memory bounded", async () => {
@@ -137,7 +206,8 @@ test("uses original selected photos while keeping memory bounded", async () => {
   assert.match(analyzer, /URL\.createObjectURL\(photo\.file\)/);
   assert.match(analyzer, /URL\.revokeObjectURL/);
   assert.match(app, /previewsRef\.current\.slice\(7\)/);
-  assert.match(css, /object-fit: contain/);
+  assert.match(css, /object-fit: cover/);
+  assert.doesNotMatch(css, /object-fit:\s*contain/);
 });
 
 test("supports recursive folder selection and the browser folder-input fallback", async () => {
@@ -149,7 +219,7 @@ test("supports recursive folder selection and the browser folder-input fallback"
   assert.match(app, /multiple/);
 });
 
-test("turns the final chapter into a Twitter-ready comprehensive result card", async () => {
+test("turns the final chapter into a desktop-first comprehensive share card", async () => {
   const [app, css] = await Promise.all([
     readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
@@ -162,20 +232,41 @@ test("turns the final chapter into a Twitter-ready comprehensive result card", a
   assert.match(app, /journey\.stats\.topMonth/);
   assert.match(app, /journey\.stats\.topWorlds\[0\]/);
   assert.match(app, /specialName/);
-  assert.match(app, /journey\.stats\.people\.slice\(0, 4\)/);
+  assert.match(app, /peopleLabels\.slice\(0, 4\)/);
   assert.match(app, /createShareCardBlob/);
   assert.match(app, /canvas\.width = 1600/);
   assert.match(app, /canvas\.height = 900/);
   assert.match(app, /canvas\.toBlob/);
-  assert.match(app, /navigator\.canShare/);
-  assert.match(app, /navigator\.share/);
-  assert.match(app, /twitter\.com\/intent\/tweet/);
+  assert.match(app, /const photoCountWidth = context\.measureText\(photoCountText\)\.width/);
+  assert.match(app, /94 \+ photoCountWidth/);
+  assert.doesNotMatch(app, /navigator\.canShare|navigator\.share|share-native-button/);
+  assert.doesNotMatch(app, /twitter\.com\/intent\/tweet|share-x-button|X에 공유하기/);
+  assert.match(app, /VRC RECAP/);
+  assert.doesNotMatch(app, /VRCHAT RECAP/);
   assert.match(app, /downloadBlob/);
-  assert.match(app, /이미지로 공유하기/);
-  assert.match(app, /Share as an image/);
-  assert.match(app, /画像として共有/);
+  assert.match(app, /photos\.slice\(0, 4\)/);
+  assert.match(app, /summaryPhotos\.map/);
+  assert.match(app, /journey\.stats\.topHour/);
+  assert.match(app, /formatHour\(language, journey\.stats\.topHour\)/);
+  assert.match(app, /journey\.stats\.topPeriod === "day"/);
+  assert.match(app, /formatCompactDate\(special\.firstDate\)/);
+  assert.match(app, /formatVisitCount\(language, world\.activeDays\)/);
+  assert.match(app, /`\$\{count\}번 방문`/);
+  assert.match(app, /`\$\{count\}回訪問`/);
+  assert.match(app, /formatMonthRange\(language, journey\.startDate, journey\.endDate\)/);
+  assert.match(app, /person\.photoId && photos\.get\(person\.photoId\)/);
+  assert.match(app, /t\.peopleCount/);
+  assert.doesNotMatch(app, /이미지로 공유하기|Share as an image|画像として共有/);
   assert.doesNotMatch(app, /className="recap-ending"/);
   assert.match(css, /\.share-summary-card \{/);
   assert.match(css, /aspect-ratio: 16 \/ 9/);
-  assert.match(css, /\.share-summary-photos img \{[\s\S]*object-fit: contain/);
+  assert.match(css, /\.share-summary-card \{[\s\S]*min-height: 0/);
+  assert.match(css, /@media \(max-width: 1100px\)[\s\S]*\.share-people \{[\s\S]*display: none/);
+  assert.match(css, /\.share-result-grid \{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(css, /\.share-result-grid article:nth-child\(n \+ 5\)/);
+  assert.match(css, /\.share-summary-photos \{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)[\s\S]*min-height: 0;[\s\S]*overflow: hidden/);
+  assert.match(css, /\.share-summary-photos figure \{[\s\S]*min-height: 0;[\s\S]*overflow: hidden/);
+  assert.match(css, /\.share-summary-photos img \{[\s\S]*object-fit: cover/);
+  assert.match(css, /\.share-result-grid \{[\s\S]*margin-top: auto/);
+  assert.doesNotMatch(app, /share-memory-span/);
 });

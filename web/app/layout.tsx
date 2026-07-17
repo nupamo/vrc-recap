@@ -10,11 +10,11 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = requestHeaders.get("x-forwarded-proto")
     ?? (host.startsWith("localhost") ? "http" : "https");
   const origin = `${protocol}://${host}`;
-  const title = "VRChat Recap — 사진 속에 남은 우리의 시간";
+  const title = "VRC Recap — 사진 속에 남은 우리의 시간";
   const description = "VRChat 스크린샷 속 월드와 사람, 오래 이어진 인연을 원본 사진으로 다시 만나는 개인 Recap.";
 
   return {
-    applicationName: "VRChat Recap",
+    applicationName: "VRC Recap",
     description,
     metadataBase: new URL(origin),
     openGraph: {
