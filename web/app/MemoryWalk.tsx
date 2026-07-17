@@ -12,7 +12,7 @@ import {
   type RecapPhoto,
 } from './lib/memory'
 
-type Language = 'ko' | 'en' | 'ja'
+type Language = 'ko' | 'en' | 'ja' | 'zh'
 type AppPhase = 'intro' | 'analyzing' | 'recap'
 type ErrorKind = 'analysis' | 'folder' | 'no-images'
 
@@ -43,6 +43,12 @@ type LoadingPreview = {
 }
 
 const LANGUAGE_STORAGE_KEY = 'vrchat-recap-language'
+const LANGUAGE_LABELS: Record<Language, string> = {
+  en: 'English',
+  ja: '日本語',
+  ko: '한국어',
+  zh: '中文',
+}
 const MAX_LOADING_PREVIEWS = 14
 
 const EMPTY_PROGRESS: AnalysisProgress = {
@@ -315,6 +321,127 @@ const COPY = {
     worldPhotos: 'photos',
     worldsTitle: 'The worlds you kept returning to',
   },
+  zh: {
+    activeDays: '留下照片的天数',
+    activeMonths: '留下回忆的月份',
+    brandLabel: '返回 VRC Recap 顶部',
+    chooseFolder: '选择照片文件夹',
+    chooseFolderAgain: '换一个文件夹重新开始',
+    composing: '散落的片段正在连成一个故事。',
+    discoveredPeople: '出现过的人',
+    discoveredWorlds: '再次浮现的地点',
+    dayStory: (count: number) =>
+      `仅这一天就留下了 ${count.toLocaleString('zh-CN')} 个瞬间。`,
+    emptyPeople:
+      '没有找到出现次数足够多的人，但照片中的日期和场景仍然留在这个故事里。',
+    endingBody:
+      '漫长的时光，也能通过几张照片和熟悉的名字重新回到身边。',
+    endingTitle: '照片记得的你，依然留在那里。',
+    errorAnalysis: '查看照片时出现了问题，请使用可读取的图片重试。',
+    errorFolder: '此浏览器无法直接打开该文件夹。',
+    errorNoImages: '所选文件夹中没有找到照片。',
+    firstStep: '选择你的照片文件夹',
+    firstStepBody:
+      '请选择 VRChat 截图文件夹。你的照片不会被发送到服务器。',
+    familiarPerson: (rank: number) => `熟悉的虚拟形象 ${rank}`,
+    familiarScene: (rank: number) => `再次出现的场景 ${rank}`,
+    foundPair: '正在寻找你们两人在不同日期单独相处的片段。',
+    foundPerson: (name: string) => `找到了与 ${name} 一起度过的瞬间。`,
+    foundVisualPerson: (count: number) =>
+      `照片中出现了 ${count.toLocaleString('zh-CN')} 个熟悉的身影。`,
+    foundWorld: (world: string) => `${world} 的记忆正在重新浮现。`,
+    galleryLabel: '回忆照片',
+    heroAccent: '我们一起度过的时光',
+    heroBody:
+      '从成千上万张截图中，重温你反复到访的场景、一次次出现的熟悉身影，以及延续至今的联系。',
+    heroTitle: '仍留在照片里的',
+    language: '语言',
+    loadingCount: (current: number, total: number) =>
+      `正在查看 ${total.toLocaleString('zh-CN')} 张回忆中的第 ${current.toLocaleString('zh-CN')} 张`,
+    loadingFilm: '目前找到的片段',
+    loadingPeople: '经常出现的名字与虚拟形象',
+    loadingTitle: '你的回忆正在一幕幕浮现',
+    monthStory: (count: number) =>
+      `仅这个月就留下了 ${count.toLocaleString('zh-CN')} 个瞬间。`,
+    nextStep: '地点与人物逐渐相连',
+    nextStepBody:
+      '日期、反复出现的地点和熟悉的身影，沿着时间线重新排列。',
+    noNamesYet: '正在寻找照片中反复出现的名字与身影。',
+    noWorld: '没有记录名称的世界',
+    peopleBody: '一次次出现在照片中的名字，成为了这个故事的同行者。',
+    peopleCount: '再次遇见的人',
+    peopleTitle: '一次次重逢的名字',
+    photoCount: '留下的照片',
+    preparing: '正在准备查看你的照片。首次启动可能需要一点时间。',
+    preparingLabel: '正在准备照片',
+    preparingTitle: '正在准备打开你的回忆',
+    recapEyebrow: 'YOUR VRCHAT MEMORIES',
+    recapLead: (days: number) =>
+      `跨越 ${days.toLocaleString('zh-CN')} 天留下的片段，重新连成了一个故事。`,
+    recapTitle: (name?: string) => (name ? `${name}的回忆` : '你的回忆'),
+    scroll: '向下滚动，继续翻阅你的回忆',
+    shareBody: '把照片、活跃日期、常去的地点和熟悉的人汇集到一张图片中。',
+    shareCardTitle: (name?: string) =>
+      name ? `${name}的 VRC Recap` : '我的 VRC Recap',
+    shareFailed: '无法生成分享图片，请重试。',
+    shareLabel: '一张图回顾你的故事',
+    shareMonthValue: (month: string, photos: number) =>
+      `${month} · ${photos.toLocaleString('zh-CN')} 张`,
+    sharePreparing: '正在生成分享图片…',
+    shareSaved: '分享图片已保存。',
+    shareSpecialValue: (days: number) =>
+      `${days.toLocaleString('zh-CN')} 天`,
+    shareTitle: '把所有回忆放进一张图',
+    shareSceneValue: (scene: string, days: number) =>
+      `${scene} · ${days.toLocaleString('zh-CN')} 天`,
+    shareWorldValue: (world: string, days: number) =>
+      `${world} · ${days.toLocaleString('zh-CN')} 天`,
+    saveShareImage: '保存分享图片',
+    selfBody: (name: string, count: number) =>
+      `${name} 是出现最多的名字，共出现在 ${count.toLocaleString('zh-CN')} 张照片中。`,
+    selfFaceBody: (count: number) =>
+      `同一个熟悉的身影在 ${count.toLocaleString('zh-CN')} 个不同日期反复出现。`,
+    specialBody: (count: number) =>
+      `你们两人单独相处的照片跨越了 ${count.toLocaleString('zh-CN')} 个不同日期。同一天连续拍摄的照片只计算一次。`,
+    specialGeneric: '你最熟悉的人',
+    specialLabel: '只有你们两人的时光',
+    specialTitle: (name?: string) =>
+      name ? `与 ${name} 一起留下的片段` : '只属于两个人的片段',
+    statDays: '一起出现的天数',
+    statFirstLast: '从最初到最后',
+    statPair: '只有两人的天数',
+    statPlace: '一起到访的世界',
+    sceneDays: '天出现',
+    storyReady: '属于你的 Recap 即将完成',
+    storyReadyBody:
+      '用原始照片中留下的时间、地点和熟悉身影，组成一段属于你的回忆故事。',
+    timelineBody: '从最早的一张到最近的夜晚，沿着时间顺序再次走过。',
+    timelineTitle: '沿着时间重走这些回忆',
+    topDay: '留下最多回忆的一天',
+    topHour: '拍摄照片最多的时间',
+    topMonth: '留下最多回忆的月份',
+    topPeople: '与你同框的名字',
+    topPeriod: '留下最多片段的时期',
+    topScene: '最常再次出现的场景',
+    topWorld: '到访次数最多的世界',
+    unknownDate: '正在确认日期',
+    visits: '次访问',
+    visualPeopleBody:
+      '照片中反复出现的虚拟形象，成为了这段故事里的同行者。',
+    visualPeopleCount: '反复出现的身影',
+    visualPeopleTitle: '一次次重逢的身影',
+    visualSubjects: (count: number) =>
+      `${count.toLocaleString('zh-CN')} 个熟悉的身影`,
+    visualWorldBody:
+      '即使没有记录世界名称，在不同日期反复出现的相似风景也成为了回忆中的地点。',
+    visualWorldsTitle: '照片中反复出现的风景',
+    temporalWorldBody:
+      '即使没有记录世界名称，照片也会按拍摄月份组成一章章回忆。',
+    temporalWorldsTitle: '按月份重新展开的场景',
+    worldBody: '那些一次次打开并重返的地点，成为了回忆的背景。',
+    worldPhotos: '张照片',
+    worldsTitle: '一次次重返的世界',
+  },
   ja: {
     activeDays: '写真を残した日',
     activeMonths: '思い出を残した月',
@@ -444,7 +571,10 @@ const COPY = {
 } as const
 
 function localeFor(language: Language): string {
-  return language === 'ko' ? 'ko-KR' : language === 'ja' ? 'ja-JP' : 'en-US'
+  if (language === 'ko') return 'ko-KR'
+  if (language === 'ja') return 'ja-JP'
+  if (language === 'zh') return 'zh-CN'
+  return 'en-US'
 }
 
 function formatDate(
@@ -483,6 +613,7 @@ function formatCalendarDay(
 function formatHour(language: Language, hour: number): string {
   if (language === 'ko') return `${hour}시`
   if (language === 'ja') return `${hour}時`
+  if (language === 'zh') return `${hour}时`
   return new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',
     hour12: true,
@@ -529,6 +660,8 @@ function formatMonthRange(
       return `${startYear}년 ${startMonth}월 — ${endMonth}월`
     if (language === 'ja')
       return `${startYear}年${startMonth}月 — ${endMonth}月`
+    if (language === 'zh')
+      return `${startYear}年${startMonth}月 — ${endMonth}月`
     const formatter = new Intl.DateTimeFormat(localeFor(language), {
       month: 'long',
     })
@@ -545,7 +678,46 @@ function formatVisitCount(language: Language, value: number): string {
   const count = formatNumber(language, value)
   if (language === 'ko') return `${count}번 방문`
   if (language === 'ja') return `${count}回訪問`
+  if (language === 'zh') return `${count} 次访问`
   return `${count} visits`
+}
+
+function shareFontFamilies(language: Language): {
+  primarySans: string
+  primarySerif: string
+  sans: string
+  serif: string
+} {
+  if (language === 'zh') {
+    return {
+      primarySans: '"Noto Sans SC Variable"',
+      primarySerif: '"Noto Serif SC Variable"',
+      sans: '"Noto Sans SC Variable", "Microsoft YaHei", sans-serif',
+      serif: '"Noto Serif SC Variable", "Songti SC", serif',
+    }
+  }
+  if (language === 'ja') {
+    return {
+      primarySans: '"Noto Sans JP Variable"',
+      primarySerif: '"Noto Serif JP Variable"',
+      sans: '"Noto Sans JP Variable", "Yu Gothic UI", sans-serif',
+      serif: '"Noto Serif JP Variable", "Yu Mincho", serif',
+    }
+  }
+  if (language === 'ko') {
+    return {
+      primarySans: '"Noto Sans KR Variable"',
+      primarySerif: '"Noto Serif KR Variable"',
+      sans: '"Noto Sans KR Variable", "Malgun Gothic", sans-serif',
+      serif: '"Noto Serif KR Variable", Batang, serif',
+    }
+  }
+  return {
+    primarySans: '"Noto Sans KR Variable"',
+    primarySerif: '"Noto Serif KR Variable"',
+    sans: '"Noto Sans KR Variable", "Segoe UI", sans-serif',
+    serif: 'Georgia, "Noto Serif KR Variable", serif',
+  }
 }
 
 function canvasText(
@@ -619,6 +791,11 @@ async function createShareCardBlob(
   if (!context) throw new Error('Unable to create the share card.')
 
   const t = COPY[language]
+  const shareFonts = shareFontFamilies(language)
+  await Promise.allSettled([
+    document.fonts.load(`400 24px ${shareFonts.primarySans}`),
+    document.fonts.load(`400 24px ${shareFonts.primarySerif}`),
+  ])
   const selfName = journey.stats.self?.displayName
   const special = journey.stats.specialPerson
   const topWorldResult = journey.stats.topWorlds[0]
@@ -677,10 +854,10 @@ async function createShareCardBlob(
   context.textAlign = 'left'
   context.textBaseline = 'alphabetic'
   context.fillStyle = '#f1ede5'
-  context.font = '800 22px Segoe UI, sans-serif'
+  context.font = `800 22px ${shareFonts.sans}`
   context.fillText('VRC RECAP', 164, 93)
   context.fillStyle = '#a7a096'
-  context.font = '600 15px Segoe UI, sans-serif'
+  context.font = `600 15px ${shareFonts.sans}`
   context.fillText(
     formatMonthRange(language, journey.startDate, journey.endDate),
     164,
@@ -688,11 +865,11 @@ async function createShareCardBlob(
   )
 
   context.fillStyle = '#fffaf0'
-  context.font = `400 ${shareTitleFontSize}px Georgia, Noto Serif KR, Yu Mincho, serif`
+  context.font = `400 ${shareTitleFontSize}px ${shareFonts.serif}`
   const title = canvasText(context, t.shareCardTitle(selfName), 690)
   context.fillText(title, 70, 230)
   context.fillStyle = '#d5cec3'
-  context.font = `400 ${shareLeadFontSize}px Segoe UI, sans-serif`
+  context.font = `400 ${shareLeadFontSize}px ${shareFonts.sans}`
   context.fillText(
     canvasText(context, t.recapLead(journey.stats.activeDays), 690),
     72,
@@ -700,12 +877,12 @@ async function createShareCardBlob(
   )
 
   context.fillStyle = '#fffaf0'
-  context.font = '400 118px Georgia, serif'
+  context.font = `400 118px ${shareFonts.serif}`
   const photoCountText = formatNumber(language, journey.totalPhotos)
   context.fillText(photoCountText, 70, 430)
   const photoCountWidth = context.measureText(photoCountText).width
   context.fillStyle = '#d7836c'
-  context.font = '800 17px Segoe UI, sans-serif'
+  context.font = `800 17px ${shareFonts.sans}`
   context.fillText(
     t.photoCount.toLocaleUpperCase(localeFor(language)),
     94 + photoCountWidth,
@@ -755,10 +932,10 @@ async function createShareCardBlob(
     context.strokeStyle = 'rgba(241,237,229,.18)'
     context.strokeRect(x, y, 318, 78)
     context.fillStyle = '#8f8980'
-    context.font = '700 13px Segoe UI, sans-serif'
+    context.font = `700 13px ${shareFonts.sans}`
     context.fillText(canvasText(context, item.label, 278), x + 18, y + 23)
     context.fillStyle = '#fffaf0'
-    context.font = `400 ${shareValueFontSize}px Georgia, Noto Serif KR, Yu Mincho, serif`
+    context.font = `400 ${shareValueFontSize}px ${shareFonts.serif}`
     context.fillText(canvasText(context, item.value, 278), x + 18, y + 57)
   })
 
@@ -767,10 +944,10 @@ async function createShareCardBlob(
     .map((person, index) => person.displayName ?? t.familiarPerson(index + 1))
   if (names.length) {
     context.fillStyle = '#8f8980'
-    context.font = '700 13px Segoe UI, sans-serif'
+    context.font = `700 13px ${shareFonts.sans}`
     context.fillText(t.topPeople, 70, 824)
     context.fillStyle = '#d8d1c6'
-    context.font = '400 20px Segoe UI, sans-serif'
+    context.font = `400 20px ${shareFonts.sans}`
     context.fillText(canvasText(context, names.join(' · '), 660), 70, 854)
   }
 
@@ -790,7 +967,7 @@ async function createShareCardBlob(
   context.fillStyle = '#a84632'
   context.fillRect(820, 862, 710, 2)
   context.fillStyle = '#8f8980'
-  context.font = '700 13px Segoe UI, sans-serif'
+  context.font = `700 13px ${shareFonts.sans}`
   context.textAlign = 'right'
   context.fillText('#VRCRecap', 1530, 850)
 
@@ -852,14 +1029,14 @@ function LanguageSelector({
   const t = COPY[language]
   return (
     <div className="language-switcher" aria-label={t.language}>
-      {(['ko', 'en', 'ja'] as const).map((item) => (
+      {(['ko', 'en', 'ja', 'zh'] as const).map((item) => (
         <button
           aria-pressed={language === item}
           key={item}
           onClick={() => onChange(item)}
           type="button"
         >
-          {item === 'ko' ? '한국어' : item === 'en' ? 'English' : '日本語'}
+          {LANGUAGE_LABELS[item]}
         </button>
       ))}
     </div>
@@ -868,7 +1045,11 @@ function LanguageSelector({
 
 function Brand() {
   return (
-    <a className="memory-brand" href="#top">
+    <button
+      className="memory-brand"
+      onClick={() => window.scrollTo({ behavior: 'smooth', top: 0 })}
+      type="button"
+    >
       <img
         alt=""
         aria-hidden="true"
@@ -877,7 +1058,7 @@ function Brand() {
         width="36"
       />
       <b>VRC RECAP</b>
-    </a>
+    </button>
   )
 }
 
@@ -1819,7 +2000,12 @@ export default function MemoryWalk() {
   useEffect(() => {
     const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY)
     const next: Language =
-      stored === 'en' || stored === 'ja' || stored === 'ko' ? stored : 'en'
+      stored === 'en' ||
+      stored === 'ja' ||
+      stored === 'ko' ||
+      stored === 'zh'
+        ? stored
+        : 'en'
     const timer = window.setTimeout(() => {
       setLanguage(next)
       document.documentElement.lang = next

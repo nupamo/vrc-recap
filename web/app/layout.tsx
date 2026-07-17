@@ -1,4 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import "@fontsource-variable/noto-sans-jp/wght.css";
+import "@fontsource-variable/noto-sans-kr/wght.css";
+import "@fontsource-variable/noto-sans-sc/wght.css";
+import "@fontsource-variable/noto-serif-jp/wght.css";
+import "@fontsource-variable/noto-serif-kr/wght.css";
+import "@fontsource-variable/noto-serif-sc/wght.css";
 import "./globals.css";
 
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://nupa.moe/vrc-recap")

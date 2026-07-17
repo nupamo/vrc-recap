@@ -26,9 +26,11 @@ test("renders the photo-first recap in English by default", async () => {
   assert.match(html, /한국어/);
   assert.match(html, /English/);
   assert.match(html, /日本語/);
+  assert.match(html, /中文/);
   assert.match(html, /Your photos are never sent to a server/);
   assert.match(html, /vrc-recap-mark\.png/);
-  assert.match(html, /class="memory-brand" href="#top"/);
+  assert.match(html, /<button class="memory-brand" type="button">/);
+  assert.doesNotMatch(html, /class="memory-brand"[^>]*href=/);
   assert.match(html, /<footer class="recap-footer intro-footer">[\s\S]*©[\s\S]*href="https:\/\/nupa\.moe"/);
   assert.match(html, /<footer class="recap-footer intro-footer">[\s\S]*href="https:\/\/github\.com\/nupamo\/vrc-recap"/);
   assert.match(html, /googletagmanager\.com\/gtag\/js\?id=G-SYEWNRRSVM/);
@@ -98,15 +100,20 @@ test("keeps technical model language out of every user-facing recap string", asy
   assert.match(app, /別の日にも続く/);
 });
 
-test("supports Korean, English, and Japanese without translating metadata values", async () => {
+test("supports Korean, English, Japanese, and Chinese without translating metadata values", async () => {
   const app = await readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(app, /from 'next\/link'/);
-  assert.match(app, /<a className="memory-brand" href="#top">/);
+  assert.match(app, /className="memory-brand"[\s\S]*window\.scrollTo\(\{ behavior: 'smooth', top: 0 \}\)/);
+  assert.doesNotMatch(app, /className="memory-brand"[^>]*href=/);
   assert.match(app, /<main className="memory-loading" id="top">/);
-  assert.match(app, /type Language = 'ko' \| 'en' \| 'ja'/);
+  assert.match(app, /type Language = 'ko' \| 'en' \| 'ja' \| 'zh'/);
   assert.match(app, /LANGUAGE_STORAGE_KEY/);
   assert.match(app, /useState<Language>\('en'\)/);
-  assert.match(app, /const next: Language =[\s\S]*stored === 'en'[\s\S]*: 'en'/);
+  assert.match(app, /stored === 'zh'/);
+  assert.match(app, /\['ko', 'en', 'ja', 'zh'\]/);
+  assert.match(app, /zh: '中文'/);
+  assert.match(app, /return 'zh-CN'/);
+  assert.match(app, /你的照片不会被发送到服务器/);
   assert.match(app, /document\.documentElement\.lang = next/);
   assert.match(app, /photo\.worldName/);
   assert.match(app, /photo\.nicknames\.join\(' · '\)/);
@@ -114,19 +121,40 @@ test("supports Korean, English, and Japanese without translating metadata values
 });
 
 test("uses smaller CJK display type and phrase-aware wrapping", async () => {
-  const [app, css] = await Promise.all([
+  const [app, css, layout, packageJson] = await Promise.all([
     readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
-  assert.match(css, /html:lang\(ko\) body,[\s\S]*html:lang\(ja\) body \{[\s\S]*line-break: strict;[\s\S]*word-break: keep-all;/);
+  assert.match(layout, /@fontsource-variable\/noto-sans-kr\/wght\.css/);
+  assert.match(layout, /@fontsource-variable\/noto-sans-jp\/wght\.css/);
+  assert.match(layout, /@fontsource-variable\/noto-sans-sc\/wght\.css/);
+  assert.match(layout, /@fontsource-variable\/noto-serif-kr\/wght\.css/);
+  assert.match(layout, /@fontsource-variable\/noto-serif-jp\/wght\.css/);
+  assert.match(layout, /@fontsource-variable\/noto-serif-sc\/wght\.css/);
+  assert.match(packageJson, /"@fontsource-variable\/noto-sans-kr"/);
+  assert.match(packageJson, /"@fontsource-variable\/noto-serif-jp"/);
+  assert.match(packageJson, /"@fontsource-variable\/noto-sans-sc"/);
+  assert.match(packageJson, /"@fontsource-variable\/noto-serif-sc"/);
+  assert.match(css, /--font-sans:[\s\S]*'Noto Sans KR Variable'[\s\S]*'Noto Sans JP Variable'/);
+  assert.match(css, /html:lang\(ja\) \{[\s\S]*--font-sans:[\s\S]*'Noto Sans JP Variable'[\s\S]*--font-serif:[\s\S]*'Noto Serif JP Variable'/);
+  assert.match(css, /html:lang\(zh\) \{[\s\S]*--font-sans:[\s\S]*'Noto Sans SC Variable'[\s\S]*--font-serif:[\s\S]*'Noto Serif SC Variable'/);
+  assert.match(css, /body \{[\s\S]*font-family: var\(--font-sans\)/);
+  assert.match(css, /\.memory-hero h1 \{[\s\S]*font-family: var\(--font-serif\)/);
+  assert.match(css, /html:lang\(ko\) body,[\s\S]*html:lang\(ja\) body,[\s\S]*html:lang\(zh\) body \{[\s\S]*line-break: strict;[\s\S]*word-break: keep-all;/);
   assert.match(css, /@supports \(word-break: auto-phrase\)[\s\S]*word-break: auto-phrase;/);
   assert.match(css, /html:lang\(ko\) \.memory-hero h1 \{[\s\S]*font-size: clamp\(54px, 6vw, 90px\)/);
-  assert.match(css, /html:lang\(ja\) \.memory-hero h1 \{[\s\S]*font-size: clamp\(50px, 5vw, 80px\)/);
+  assert.match(css, /html:lang\(ja\) \.memory-hero h1,[\s\S]*html:lang\(zh\) \.memory-hero h1 \{[\s\S]*font-size: clamp\(50px, 5vw, 80px\)/);
   assert.match(css, /html:lang\(ko\) \.share-summary-copy h3 \{[\s\S]*white-space: normal;/);
-  assert.match(css, /html:lang\(ja\) \.share-summary-copy h3 \{[\s\S]*white-space: normal;/);
+  assert.match(css, /html:lang\(ja\) \.share-summary-copy h3,[\s\S]*html:lang\(zh\) \.share-summary-copy h3 \{[\s\S]*white-space: normal;/);
   assert.match(app, /const shareTitleFontSize =[\s\S]*language === 'en' \? 67 : language === 'ko' \? 59 : 54/);
   assert.match(app, /const shareValueFontSize =[\s\S]*language === 'en' \? 27 : language === 'ko' \? 24 : 22/);
+  assert.match(app, /function shareFontFamilies/);
+  assert.match(app, /Noto Sans SC Variable/);
+  assert.match(app, /Noto Serif SC Variable/);
+  assert.match(app, /document\.fonts\.load/);
 });
 
 test("shows real photos, names, worlds, and discoveries while processing", async () => {
