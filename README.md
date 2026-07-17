@@ -1,6 +1,6 @@
 # VRC Recap
 
-[English](README.en.md) · [Live site](https://nupamo.github.io/vrc-recap/)
+[English](README.en.md) · [Live site](https://nupa.moe/vrc-recap/)
 
 VRChat 스크린샷 폴더를 선택하면 원본 사진, 실제 월드 이름, 실제 닉네임과 날짜를 시간순으로 엮어 개인 Recap을 만드는 웹 앱입니다.
 

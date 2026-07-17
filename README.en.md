@@ -1,6 +1,6 @@
 # VRC Recap
 
-[한국어](README.md) · [Live site](https://nupamo.github.io/vrc-recap/)
+[한국어](README.md) · [Live site](https://nupa.moe/vrc-recap/)
 
 VRC Recap turns a folder of VRChat screenshots into a personal, photo-first recap. It keeps original photos, world names, nicknames, and dates intact while arranging recurring places and people into a timeline.
 

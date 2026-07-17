@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
-const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://nupamo.github.io/vrc-recap")
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://nupa.moe/vrc-recap")
   .replace(/\/$/, "");
 const title = "VRC Recap — 사진 속에 남은 우리의 시간";
 const description = "VRChat 스크린샷 속 월드와 사람, 오래 이어진 인연을 원본 사진으로 다시 만나는 개인 Recap.";

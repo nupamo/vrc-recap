@@ -55,7 +55,7 @@ jobs:
         run: pnpm run build
         env:
           GITHUB_PAGES: "true"
-          NEXT_PUBLIC_SITE_URL: "https://nupamo.github.io/vrc-recap"
+          NEXT_PUBLIC_SITE_URL: "https://nupa.moe/vrc-recap"
 
       - name: Disable Jekyll
         run: touch dist/client/.nojekyll
