@@ -29,9 +29,35 @@ test("renders the photo-first recap in Korean by default", async () => {
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
+test("builds a repository-aware static export for GitHub Pages", async () => {
+  const [nextConfig, viteConfig, layout, localVision, workflow, exportedIndex] = await Promise.all([
+    readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/localVision.ts", import.meta.url), "utf8"),
+    readFile(new URL("../../.github/workflows/deploy.yml", import.meta.url), "utf8"),
+    stat(new URL("../dist/client/index.html", import.meta.url)),
+  ]);
+
+  assert.match(nextConfig, /output: "export"/);
+  assert.match(nextConfig, /trailingSlash: true/);
+  assert.match(nextConfig, /GITHUB_PAGES/);
+  assert.match(nextConfig, /NEXT_PUBLIC_BASE_PATH/);
+  assert.match(viteConfig, /base: publicBasePath/);
+  assert.doesNotMatch(layout, /headers\(\)|next\/headers|generateMetadata/);
+  assert.match(layout, /export const metadata: Metadata/);
+  assert.match(localVision, /publicAssetPath/);
+  assert.match(workflow, /actions\/upload-pages-artifact@v4/);
+  assert.match(workflow, /path: "\.\/web\/dist\/client"/);
+  assert.ok(exportedIndex.size > 0);
+});
+
 test("removes the game route, game code, and game assets", async () => {
   const response = await render("/game");
-  assert.equal(response.status, 404);
+  assert.equal(response.status, 308);
+  assert.equal(response.headers.get("location"), "/game/");
+  const canonicalResponse = await render("/game/");
+  assert.equal(canonicalResponse.status, 404);
   await assert.rejects(access(new URL("../app/MemoryGame.tsx", import.meta.url)));
   await assert.rejects(access(new URL("../app/game/page.tsx", import.meta.url)));
   await assert.rejects(access(new URL("../app/lib/gameSession.ts", import.meta.url)));
@@ -139,15 +165,15 @@ test("builds meaningful people and place results from local visual analysis when
   assert.match(localVision, /FaceDetector\.createFromOptions/);
   assert.match(localVision, /ObjectDetector\.createFromOptions/);
   assert.match(localVision, /ImageEmbedder\.createFromOptions/);
-  assert.match(localVision, /modelAssetPath: "\/models\/blaze_face_short_range\.tflite"/);
-  assert.match(localVision, /modelAssetPath: "\/models\/efficientdet_lite0_uint8\.tflite"/);
-  assert.match(localVision, /modelAssetPath: "\/models\/mobilenet_v3_small\.tflite"/);
+  assert.match(localVision, /modelAssetPath: publicAssetPath\("\/models\/blaze_face_short_range\.tflite"\)/);
+  assert.match(localVision, /modelAssetPath: publicAssetPath\("\/models\/efficientdet_lite0_uint8\.tflite"\)/);
+  assert.match(localVision, /modelAssetPath: publicAssetPath\("\/models\/mobilenet_v3_small\.tflite"\)/);
   assert.match(localVision, /categoryAllowlist: \["person"\]/);
   assert.match(localVision, /minDetectionConfidence: 0\.18/);
   assert.match(localVision, /scoreThreshold: 0\.08/);
   assert.match(localVision, /mergeCandidates\(faceCandidates, personCandidates\)/);
   assert.match(localVision, /source: "portrait"/);
-  assert.match(localVision, /FilesetResolver\.forVisionTasks\("\/mediapipe\/wasm"\)/);
+  assert.match(localVision, /FilesetResolver\.forVisionTasks\([\s\S]*publicAssetPath\("\/mediapipe\/wasm"\)/);
   assert.match(localVision, /sceneDescriptor/);
   assert.match(localVision, /candidateFramingScore/);
   assert.match(localVision, /selfieScore/);

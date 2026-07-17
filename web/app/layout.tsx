@@ -1,42 +1,35 @@
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
 import "./globals.css";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host")
-    ?? requestHeaders.get("host")
-    ?? "localhost:3000";
-  const protocol = requestHeaders.get("x-forwarded-proto")
-    ?? (host.startsWith("localhost") ? "http" : "https");
-  const origin = `${protocol}://${host}`;
-  const title = "VRC Recap — 사진 속에 남은 우리의 시간";
-  const description = "VRChat 스크린샷 속 월드와 사람, 오래 이어진 인연을 원본 사진으로 다시 만나는 개인 Recap.";
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://nupamo.github.io/vrc-recap")
+  .replace(/\/$/, "");
+const title = "VRC Recap — 사진 속에 남은 우리의 시간";
+const description = "VRChat 스크린샷 속 월드와 사람, 오래 이어진 인연을 원본 사진으로 다시 만나는 개인 Recap.";
+const socialImage = `${siteUrl}/og-memory-recap.png`;
 
-  return {
-    applicationName: "VRC Recap",
+export const metadata: Metadata = {
+  applicationName: "VRC Recap",
+  description,
+  metadataBase: new URL(`${siteUrl}/`),
+  openGraph: {
     description,
-    metadataBase: new URL(origin),
-    openGraph: {
-      description,
-      images: [{
-        alt: "VRChat 사진이 펼쳐진 감성적인 추억 앨범",
-        height: 909,
-        url: "/og-memory-recap.png",
-        width: 1730,
-      }],
-      title,
-      type: "website",
-    },
+    images: [{
+      alt: "VRChat 사진이 펼쳐진 감성적인 추억 앨범",
+      height: 909,
+      url: socialImage,
+      width: 1730,
+    }],
     title,
-    twitter: {
-      card: "summary_large_image",
-      description,
-      images: ["/og-memory-recap.png"],
-      title,
-    },
-  };
-}
+    type: "website",
+  },
+  title,
+  twitter: {
+    card: "summary_large_image",
+    description,
+    images: [socialImage],
+    title,
+  },
+};
 
 export const viewport: Viewport = {
   initialScale: 1,

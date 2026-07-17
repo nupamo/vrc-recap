@@ -9,7 +9,7 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "start": "vinext start",
-    "test": "npm run build && tsc -p tsconfig.inference.json && node --test tests/*.test.mjs",
+    "test": "pnpm run build && tsc -p tsconfig.inference.json && node --test tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "db:generate": "drizzle-kit generate"

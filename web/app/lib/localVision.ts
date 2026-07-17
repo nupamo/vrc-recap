@@ -32,6 +32,12 @@ type VisualCandidate = {
 
 const INPUT_WIDTH = 720;
 const MAX_SUBJECTS = 8;
+const PUBLIC_BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+function publicAssetPath(path: string): string {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${PUBLIC_BASE_PATH}${normalizedPath}`;
+}
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.max(minimum, Math.min(maximum, value));
@@ -151,11 +157,13 @@ function selfieScore(
 }
 
 export async function createLocalVisualAnalyzer(): Promise<LocalVisualAnalyzer> {
-  const fileset = await FilesetResolver.forVisionTasks("/mediapipe/wasm");
+  const fileset = await FilesetResolver.forVisionTasks(
+    publicAssetPath("/mediapipe/wasm"),
+  );
   const [faceDetector, personDetector, imageEmbedder] = await Promise.all([
     FaceDetector.createFromOptions(fileset, {
       baseOptions: {
-        modelAssetPath: "/models/blaze_face_short_range.tflite",
+        modelAssetPath: publicAssetPath("/models/blaze_face_short_range.tflite"),
       },
       runningMode: "IMAGE",
       minDetectionConfidence: 0.18,
@@ -163,7 +171,7 @@ export async function createLocalVisualAnalyzer(): Promise<LocalVisualAnalyzer> 
     }),
     ObjectDetector.createFromOptions(fileset, {
       baseOptions: {
-        modelAssetPath: "/models/efficientdet_lite0_uint8.tflite",
+        modelAssetPath: publicAssetPath("/models/efficientdet_lite0_uint8.tflite"),
       },
       categoryAllowlist: ["person"],
       maxResults: MAX_SUBJECTS,
@@ -172,7 +180,7 @@ export async function createLocalVisualAnalyzer(): Promise<LocalVisualAnalyzer> 
     }),
     ImageEmbedder.createFromOptions(fileset, {
       baseOptions: {
-        modelAssetPath: "/models/mobilenet_v3_small.tflite",
+        modelAssetPath: publicAssetPath("/models/mobilenet_v3_small.tflite"),
       },
       runningMode: "IMAGE",
     }),

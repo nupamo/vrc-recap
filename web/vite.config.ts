@@ -7,6 +7,10 @@ const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   "00000000-0000-4000-8000-000000000000";
 
 const { d1, r2 } = hostingConfig;
+const repositoryName = process.env.GITHUB_REPOSITORY?.split("/").at(-1) ?? "vrc-recap";
+const isGitHubPagesBuild = process.env.GITHUB_PAGES === "true";
+const isUserSite = repositoryName.endsWith(".github.io");
+const publicBasePath = isGitHubPagesBuild && !isUserSite ? `/${repositoryName}` : "";
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
@@ -44,6 +48,10 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    // Vinext's router basePath currently prevents the root route from being
+    // prerendered in export mode. Vite's public base gives GitHub Pages the
+    // correct asset URLs while keeping the single exported route static.
+    base: publicBasePath ? `${publicBasePath}/` : undefined,
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,
