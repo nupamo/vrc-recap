@@ -22,6 +22,9 @@ type Language = "ko" | "en" | "ja";
 type AppPhase = "intro" | "analyzing" | "recap";
 type ErrorKind = "analysis" | "folder" | "no-images";
 
+const PUBLIC_BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const BRAND_MARK_SRC = `${PUBLIC_BASE_PATH}/vrc-recap-mark.png`;
+
 type LocalFileHandle = {
   getFile: () => Promise<File>;
   kind: "file";
@@ -46,6 +49,7 @@ type LoadingPreview = {
 };
 
 const LANGUAGE_STORAGE_KEY = "vrchat-recap-language";
+const MAX_LOADING_PREVIEWS = 14;
 
 const EMPTY_PROGRESS: AnalysisProgress = {
   current: 0,
@@ -79,7 +83,7 @@ const COPY = {
     errorFolder: "이 브라우저에서는 폴더를 직접 열 수 없었어요.",
     errorNoImages: "선택한 폴더에서 사진을 찾지 못했어요.",
     firstStep: "사진 폴더를 선택하세요",
-    firstStepBody: "VRChat에서 남긴 스크린샷이 있는 폴더면 충분해요.",
+    firstStepBody: "VRChat 스크린샷 폴더만 선택하세요. 사진은 서버로 전송되지 않습니다.",
     familiarPerson: (rank: number) => `익숙한 아바타 ${rank}`,
     familiarScene: (rank: number) => `다시 나타난 풍경 ${rank}`,
     foundPair: "서로 다른 날에 둘만 남긴 순간을 찾고 있어요.",
@@ -104,7 +108,9 @@ const COPY = {
     peopleCount: "다시 만난 사람",
     peopleTitle: "몇 번이고 다시 만난 이름",
     photoCount: "남겨진 사진",
-    preparing: "사진 폴더의 첫 장면을 펼치고 있어요.",
+    preparing: "사진을 살펴보는 데 필요한 준비를 하고 있어요. 처음 시작할 때는 잠시 시간이 걸릴 수 있어요.",
+    preparingLabel: "사진을 살펴볼 준비 중",
+    preparingTitle: "추억을 펼칠 준비를 하고 있어요",
     recapEyebrow: "YOUR VRCHAT MEMORIES",
     recapLead: (days: number) => `${days.toLocaleString("ko-KR")}일에 걸쳐 남긴 장면들이 다시 하나의 흐름이 되었습니다.`,
     recapTitle: (name?: string) => name ? `${name}님의 추억` : "당신의 추억",
@@ -174,7 +180,7 @@ const COPY = {
     errorFolder: "This browser could not open the folder directly.",
     errorNoImages: "No photos were found in the selected folder.",
     firstStep: "Choose your photo folder",
-    firstStepBody: "A folder containing your VRChat screenshots is all you need.",
+    firstStepBody: "Choose your VRChat screenshot folder. Your photos are never sent to a server.",
     familiarPerson: (rank: number) => `Familiar avatar ${rank}`,
     familiarScene: (rank: number) => `Returning scene ${rank}`,
     foundPair: "Looking for moments with just the two of you across different days.",
@@ -199,7 +205,9 @@ const COPY = {
     peopleCount: "people met again",
     peopleTitle: "The names you met again and again",
     photoCount: "photos kept",
-    preparing: "Opening the first moments in your photo folder.",
+    preparing: "Preparing everything needed to look through your photos. The first start can take a moment.",
+    preparingLabel: "PREPARING YOUR PHOTOS",
+    preparingTitle: "Getting ready to open your memories",
     recapEyebrow: "YOUR VRCHAT MEMORIES",
     recapLead: (days: number) => `Moments saved across ${days.toLocaleString("en-US")} days have become one continuous story.`,
     recapTitle: (name?: string) => name ? `${name}'s memories` : "Your memories",
@@ -269,7 +277,7 @@ const COPY = {
     errorFolder: "このブラウザーではフォルダーを直接開けませんでした。",
     errorNoImages: "選択したフォルダーに写真が見つかりませんでした。",
     firstStep: "写真フォルダーを選びます",
-    firstStepBody: "VRChatのスクリーンショットが入ったフォルダーだけで始められます。",
+    firstStepBody: "VRChatのスクリーンショットフォルダーを選ぶだけ。写真がサーバーに送信されることはありません。",
     familiarPerson: (rank: number) => `懐かしいアバター ${rank}`,
     familiarScene: (rank: number) => `よみがえった風景 ${rank}`,
     foundPair: "別の日にも続く、ふたりだけの場面を探しています。",
@@ -294,7 +302,9 @@ const COPY = {
     peopleCount: "再会した人",
     peopleTitle: "何度も再会した名前",
     photoCount: "残された写真",
-    preparing: "写真フォルダーの最初の場面を開いています。",
+    preparing: "写真を見ていくための準備をしています。最初の起動には少し時間がかかることがあります。",
+    preparingLabel: "写真を見る準備中",
+    preparingTitle: "思い出を開く準備をしています",
     recapEyebrow: "YOUR VRCHAT MEMORIES",
     recapLead: (days: number) => `${days.toLocaleString("ja-JP")}日にわたって残した場面が、ひとつの物語になりました。`,
     recapTitle: (name?: string) => name ? `${name}さんの思い出` : "あなたの思い出",
@@ -541,7 +551,10 @@ async function createShareCardBlob(
   const shareTitleFontSize = language === "en" ? 67 : language === "ko" ? 59 : 54;
   const shareLeadFontSize = language === "en" ? 24 : language === "ko" ? 22 : 21;
   const shareValueFontSize = language === "en" ? 27 : language === "ko" ? 24 : 22;
-  const loadedPhotos = await Promise.all(photos.slice(0, 4).map((photo) => loadShareImage(photo.url)));
+  const [brandMark, loadedPhotos] = await Promise.all([
+    loadShareImage(BRAND_MARK_SRC),
+    Promise.all(photos.slice(0, 4).map((photo) => loadShareImage(photo.url))),
+  ]);
 
   context.fillStyle = "#171715";
   context.fillRect(0, 0, canvas.width, canvas.height);
@@ -551,15 +564,10 @@ async function createShareCardBlob(
   context.fillStyle = glow;
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  context.fillStyle = "#a84632";
-  context.fillRect(70, 70, 70, 70);
-  context.fillStyle = "#fffaf0";
-  context.font = "800 22px Segoe UI, sans-serif";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillText("VR", 105, 106);
+  context.drawImage(brandMark, 70, 70, 70, 70);
 
   context.textAlign = "left";
+  context.textBaseline = "alphabetic";
   context.fillStyle = "#f1ede5";
   context.font = "800 22px Segoe UI, sans-serif";
   context.fillText("VRC RECAP", 164, 93);
@@ -747,7 +755,7 @@ function LanguageSelector({
 function Brand() {
   return (
     <a className="memory-brand" href="#top">
-      <span>VR</span>
+      <img alt="" aria-hidden="true" height="36" src={BRAND_MARK_SRC} width="36" />
       <b>VRC RECAP</b>
     </a>
   );
@@ -860,6 +868,7 @@ function Analyzing({
   const t = COPY[language];
   const percent = Math.round((progress.current / Math.max(1, progress.total)) * 100);
   const current = previews[0];
+  const isPreparing = progress.stage === "preparing";
 
   return (
     <main className="memory-loading">
@@ -892,23 +901,28 @@ function Analyzing({
               </figcaption>
             </figure>
           ) : (
-            <div className="loading-photo-placeholder"><i /></div>
+            <div className="loading-photo-placeholder" role="status">
+              <i aria-hidden="true" />
+              <span>{t.preparingLabel}</span>
+            </div>
           )}
         </div>
 
         <div className="loading-story">
-          <p className="memory-kicker">{t.loadingCount(progress.current, progress.total)}</p>
-          <h1>{t.loadingTitle}</h1>
+          <p className="memory-kicker">
+            {isPreparing ? t.preparingLabel : t.loadingCount(progress.current, progress.total)}
+          </p>
+          <h1>{isPreparing ? t.preparingTitle : t.loadingTitle}</h1>
           <p className="loading-message">{loadingMessage(language, progress)}</p>
           <div
-            aria-label={`${percent}%`}
+            aria-label={isPreparing ? t.preparingLabel : `${percent}%`}
             aria-valuemax={100}
             aria-valuemin={0}
-            aria-valuenow={percent}
-            className="memory-progress"
+            aria-valuenow={isPreparing ? undefined : percent}
+            className={`memory-progress ${isPreparing ? "is-indeterminate" : ""}`}
             role="progressbar"
           >
-            <span style={{ width: `${percent}%` }} />
+            <span style={isPreparing ? undefined : { width: `${percent}%` }} />
           </div>
           <div className="loading-discoveries">
             <article>
@@ -943,11 +957,15 @@ function Analyzing({
       <section className="loading-filmstrip" aria-label={t.loadingFilm}>
         <span>{t.loadingFilm}</span>
         <div>
-          {previews.map((preview) => (
-            <figure key={`${preview.fileName}-${preview.date}`}>
-              <img src={preview.url} alt="" />
-            </figure>
-          ))}
+          {previews.length > 0
+            ? previews.map((preview) => (
+              <figure key={`${preview.fileName}-${preview.date}`}>
+                <img src={preview.url} alt="" />
+              </figure>
+            ))
+            : Array.from({ length: 12 }, (_, index) => (
+              <figure className="loading-film-placeholder" key={index} aria-hidden="true" />
+            ))}
         </div>
       </section>
     </main>
@@ -1234,20 +1252,22 @@ function Recap({
           style={{ backgroundImage: `url(${coverPhoto.url})` }}
           aria-hidden="true"
         />
-        <div className="recap-cover-photo">
-          <img
-            src={coverPhoto.url}
-            alt=""
-            data-main-photo="true"
-            fetchPriority="high"
-          />
-        </div>
-        <div className="recap-cover-copy">
-          <p className="memory-kicker">{t.recapEyebrow}</p>
-          <span>{formatMonthRange(language, journey.startDate, journey.endDate)}</span>
-          <h1>{t.recapTitle(selfName)}</h1>
-          <p>{t.recapLead(journey.stats.activeDays)}</p>
-          <small>{t.scroll}</small>
+        <div className="recap-cover-inner">
+          <div className="recap-cover-photo">
+            <img
+              src={coverPhoto.url}
+              alt=""
+              data-main-photo="true"
+              fetchPriority="high"
+            />
+          </div>
+          <div className="recap-cover-copy">
+            <p className="memory-kicker">{t.recapEyebrow}</p>
+            <span>{formatMonthRange(language, journey.startDate, journey.endDate)}</span>
+            <h1>{t.recapTitle(selfName)}</h1>
+            <p>{t.recapLead(journey.stats.activeDays)}</p>
+            <small>{t.scroll}</small>
+          </div>
         </div>
       </section>
 
@@ -1267,6 +1287,7 @@ function Recap({
       </section>
 
       <section className="recap-chapter peak-month-chapter">
+        <div className="recap-chapter-inner peak-month-inner">
         <div className="chapter-copy">
           <p className="chapter-number">01</p>
           <span>{topPeriodLabel}</span>
@@ -1276,10 +1297,12 @@ function Recap({
             : t.monthStory(topPeriodPhotoCount)}</p>
         </div>
         {peakPeriodPhoto && <PhotoFrame language={language} photo={peakPeriodPhoto} prominent />}
+        </div>
       </section>
 
       {journey.stats.topWorlds.length > 0 && (
         <section className="recap-chapter worlds-chapter">
+          <div className="recap-chapter-inner">
           <div className="chapter-heading">
             <p className="chapter-number">02</p>
             <div>
@@ -1327,10 +1350,12 @@ function Recap({
               );
             })}
           </div>
+          </div>
         </section>
       )}
 
       <section className="recap-chapter people-chapter">
+        <div className="recap-chapter-inner">
         <div className="chapter-heading">
           <p className="chapter-number">03</p>
           <div>
@@ -1370,6 +1395,7 @@ function Recap({
         ) : !journey.stats.self ? (
           <p className="recap-empty">{t.emptyPeople}</p>
         ) : null}
+        </div>
       </section>
 
       {special && (
@@ -1425,6 +1451,7 @@ function Recap({
       )}
 
       <section className="recap-chapter timeline-chapter">
+        <div className="recap-chapter-inner">
         <div className="chapter-heading">
           <p className="chapter-number">{special ? "05" : "04"}</p>
           <div>
@@ -1440,9 +1467,11 @@ function Recap({
             </div>
           ))}
         </div>
+        </div>
       </section>
 
       <section className="recap-share-chapter">
+        <div className="recap-share-inner">
         <div className="share-chapter-heading">
           <p>{t.shareLabel}</p>
           <h2>{t.shareTitle}</h2>
@@ -1452,7 +1481,7 @@ function Recap({
         <div className="share-summary-card">
           <div className="share-summary-copy">
             <div className="share-summary-brand">
-              <i>VR</i>
+              <img alt="" aria-hidden="true" src={BRAND_MARK_SRC} />
               <span>VRC RECAP</span>
             </div>
             <p>{formatMonthRange(language, journey.startDate, journey.endDate)}</p>
@@ -1523,6 +1552,7 @@ function Recap({
           </button>
         </div>
         <p className="share-status" aria-live="polite">{shareStatusText}</p>
+        </div>
       </section>
     </main>
   );
@@ -1586,8 +1616,10 @@ export default function MemoryWalk() {
       visualSubjects: photo.visualSubjects,
       worldName: photo.worldName,
     };
-    const next = [nextPreview, ...previewsRef.current].slice(0, 8);
-    previewsRef.current.slice(7).forEach((preview) => URL.revokeObjectURL(preview.url));
+    const next = [nextPreview, ...previewsRef.current].slice(0, MAX_LOADING_PREVIEWS);
+    previewsRef.current
+      .slice(MAX_LOADING_PREVIEWS - 1)
+      .forEach((preview) => URL.revokeObjectURL(preview.url));
     previewsRef.current = next;
     setPreviews(next);
   }, []);

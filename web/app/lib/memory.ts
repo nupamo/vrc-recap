@@ -500,6 +500,7 @@ export async function analyzeFiles(
     stage: "preparing",
     total: files.length,
   });
+  await waitForPaint();
 
   let visualAnalyzer: LocalVisualAnalyzer | null = null;
   try {

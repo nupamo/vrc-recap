@@ -26,17 +26,21 @@ test("renders the photo-first recap in Korean by default", async () => {
   assert.match(html, /한국어/);
   assert.match(html, /English/);
   assert.match(html, /日本語/);
+  assert.match(html, /사진은 서버로 전송되지 않습니다/);
+  assert.match(html, /vrc-recap-mark\.png/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
 test("builds a repository-aware static export for GitHub Pages", async () => {
-  const [nextConfig, viteConfig, layout, localVision, workflow, exportedIndex] = await Promise.all([
+  const [nextConfig, viteConfig, layout, localVision, workflow, exportedIndex, ogImage, brandMark] = await Promise.all([
     readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/localVision.ts", import.meta.url), "utf8"),
     readFile(new URL("../../.github/workflows/deploy.yml", import.meta.url), "utf8"),
     stat(new URL("../dist/client/index.html", import.meta.url)),
+    stat(new URL("../public/og.png", import.meta.url)),
+    stat(new URL("../public/vrc-recap-mark.png", import.meta.url)),
   ]);
 
   assert.match(nextConfig, /output: "export"/);
@@ -46,10 +50,16 @@ test("builds a repository-aware static export for GitHub Pages", async () => {
   assert.match(viteConfig, /base: publicBasePath/);
   assert.doesNotMatch(layout, /headers\(\)|next\/headers|generateMetadata/);
   assert.match(layout, /export const metadata: Metadata/);
+  assert.match(layout, /\/og\.png/);
+  assert.match(layout, /vrc-recap-mark\.png/);
+  assert.match(layout, /width: 2108/);
+  assert.match(layout, /height: 1204/);
   assert.match(localVision, /publicAssetPath/);
   assert.match(workflow, /actions\/upload-pages-artifact@v4/);
   assert.match(workflow, /path: "\.\/web\/dist\/client"/);
   assert.ok(exportedIndex.size > 0);
+  assert.ok(ogImage.size > 0);
+  assert.ok(brandMark.size > 0);
 });
 
 test("removes the game route, game code, and game assets", async () => {
@@ -104,9 +114,10 @@ test("uses smaller CJK display type and phrase-aware wrapping", async () => {
 });
 
 test("shows real photos, names, worlds, and discoveries while processing", async () => {
-  const [app, analyzer] = await Promise.all([
+  const [app, analyzer, css] = await Promise.all([
     readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/memory.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
   assert.match(analyzer, /photo: \{/);
   assert.match(analyzer, /file,/);
@@ -117,6 +128,10 @@ test("shows real photos, names, worlds, and discoveries while processing", async
   assert.match(app, /loading-filmstrip/);
   assert.match(app, /current\.nicknames\.join\(" · "\)/);
   assert.match(app, /progress\.discoveries\.topNames/);
+  assert.match(analyzer, /stage: "preparing",[\s\S]*await waitForPaint\(\)/);
+  assert.match(app, /memory-progress \$\{isPreparing \? "is-indeterminate"/);
+  assert.match(app, /loading-film-placeholder/);
+  assert.match(css, /@keyframes loading-progress/);
 });
 
 test("infers self and the standout two-person relationship from metadata", async () => {
@@ -231,7 +246,8 @@ test("uses original selected photos while keeping memory bounded", async () => {
   assert.match(analyzer, /selectedRecords = new Map/);
   assert.match(analyzer, /URL\.createObjectURL\(photo\.file\)/);
   assert.match(analyzer, /URL\.revokeObjectURL/);
-  assert.match(app, /previewsRef\.current\.slice\(7\)/);
+  assert.match(app, /MAX_LOADING_PREVIEWS = 14/);
+  assert.match(app, /slice\(MAX_LOADING_PREVIEWS - 1\)/);
   assert.match(css, /object-fit: cover/);
   assert.doesNotMatch(css, /object-fit:\s*contain/);
 });
