@@ -1002,6 +1002,7 @@ function Recap({
   onRestart: () => void;
 }) {
   const t = COPY[language];
+  const storyRef = useRef<HTMLElement>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareStatus, setShareStatus] = useState<
     "failed" | "preparing" | "saved" | null
@@ -1106,6 +1107,102 @@ function Recap({
         ? t.shareFailed
         : null;
 
+  useEffect(() => {
+    const story = storyRef.current;
+    if (!story || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const images = Array.from(story.querySelectorAll<HTMLImageElement>("img"));
+    const currentPositions = new Map<HTMLImageElement, number>();
+    const targetPositions = new Map<HTMLImageElement, number>();
+    let measureFrame = 0;
+    let motionFrame = 0;
+
+    const animate = () => {
+      motionFrame = 0;
+      let isMoving = false;
+
+      for (const [image, target] of targetPositions) {
+        const current = currentPositions.get(image) ?? target;
+        const distance = target - current;
+        const next = Math.abs(distance) < 0.04
+          ? target
+          : current + distance * 0.085;
+        currentPositions.set(image, next);
+        image.style.setProperty("--photo-pan-y", `${next.toFixed(2)}%`);
+        if (next !== target) isMoving = true;
+      }
+
+      if (isMoving) motionFrame = window.requestAnimationFrame(animate);
+    };
+
+    const startMotion = () => {
+      if (!motionFrame) motionFrame = window.requestAnimationFrame(animate);
+    };
+
+    const measure = () => {
+      measureFrame = 0;
+      const viewportHeight = window.innerHeight;
+
+      for (const image of images) {
+        if (!image.complete || image.naturalWidth === 0 || image.naturalHeight === 0) continue;
+        const rect = image.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) continue;
+
+        const imageAspect = image.naturalWidth / image.naturalHeight;
+        const frameAspect = rect.width / rect.height;
+        const isVerticallyCropped = imageAspect < frameAspect - 0.02;
+
+        if (!isVerticallyCropped) {
+          image.removeAttribute("data-photo-pan");
+          image.style.removeProperty("--photo-pan-y");
+          currentPositions.delete(image);
+          targetPositions.delete(image);
+          continue;
+        }
+
+        const progress = Math.min(
+          1,
+          Math.max(0, (viewportHeight - rect.top) / (viewportHeight + rect.height)),
+        );
+        const isMainPhoto = image.dataset.mainPhoto === "true";
+        const minimum = isMainPhoto ? 12 : 0;
+        const maximum = isMainPhoto ? 88 : 100;
+        const target = minimum + progress * (maximum - minimum);
+        image.dataset.photoPan = "true";
+        targetPositions.set(image, target);
+
+        if (!currentPositions.has(image)) {
+          currentPositions.set(image, target);
+          image.style.setProperty("--photo-pan-y", `${target.toFixed(2)}%`);
+        }
+      }
+
+      startMotion();
+    };
+
+    const requestMeasure = () => {
+      if (measureFrame) return;
+      measureFrame = window.requestAnimationFrame(measure);
+    };
+
+    images.forEach((image) => image.addEventListener("load", requestMeasure));
+    window.addEventListener("resize", requestMeasure, { passive: true });
+    window.addEventListener("scroll", requestMeasure, { passive: true });
+    requestMeasure();
+
+    return () => {
+      if (measureFrame) window.cancelAnimationFrame(measureFrame);
+      if (motionFrame) window.cancelAnimationFrame(motionFrame);
+      images.forEach((image) => {
+        image.removeEventListener("load", requestMeasure);
+        image.removeAttribute("data-photo-pan");
+        image.style.removeProperty("--photo-pan-y");
+      });
+      window.removeEventListener("resize", requestMeasure);
+      window.removeEventListener("scroll", requestMeasure);
+    };
+  }, [journey]);
+
   const saveShareImage = async () => {
     if (shareBusy) return;
     setShareBusy(true);
@@ -1122,7 +1219,7 @@ function Recap({
   };
 
   return (
-    <main className="recap-story" id="top">
+    <main className="recap-story" id="top" ref={storyRef}>
       <header className="memory-topbar recap-topbar">
         <Brand />
         <div className="recap-topbar-actions">
@@ -1138,7 +1235,12 @@ function Recap({
           aria-hidden="true"
         />
         <div className="recap-cover-photo">
-          <img src={coverPhoto.url} alt="" />
+          <img
+            src={coverPhoto.url}
+            alt=""
+            data-main-photo="true"
+            fetchPriority="high"
+          />
         </div>
         <div className="recap-cover-copy">
           <p className="memory-kicker">{t.recapEyebrow}</p>

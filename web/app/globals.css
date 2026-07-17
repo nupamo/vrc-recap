@@ -270,13 +270,16 @@ img {
   display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
-  background:
+  background-image: url(https://nupa.moe/profile.jpg);
+  background-size: cover;
+  background-position: center;
+  /* background:
     radial-gradient(
       circle at 68% 25%,
       rgba(246, 214, 158, 0.85) 0 8%,
       transparent 8.5%
     ),
-    linear-gradient(145deg, #3d4852 0 42%, #677667 42% 66%, #25272f 66%);
+    linear-gradient(145deg, #3d4852 0 42%, #677667 42% 66%, #25272f 66%); */
 }
 
 .paper-photo b {
@@ -305,13 +308,16 @@ img {
 }
 
 .paper-photo-two i {
-  background:
+  background-image: url(https://nupa.moe/chiffon.jpg);
+  background-size: cover;
+  background-position: center;
+  /* background:
     radial-gradient(
       circle at 28% 28%,
       rgba(227, 178, 205, 0.72) 0 8%,
       transparent 8.5%
     ),
-    linear-gradient(155deg, #2f2849 0 46%, #765a75 46% 65%, #171923 65%);
+    linear-gradient(155deg, #2f2849 0 46%, #765a75 46% 65%, #171923 65%); */
 }
 
 .paper-photo-three {
@@ -322,13 +328,16 @@ img {
 }
 
 .paper-photo-three i {
-  background:
+  background-image: url(https://nupa.moe/milltina.jpg);
+  background-size: cover;
+  background-position: center;
+  /* background:
     radial-gradient(
       circle at 73% 22%,
       rgba(255, 238, 193, 0.9) 0 7%,
       transparent 7.5%
     ),
-    linear-gradient(160deg, #4e6870 0 45%, #829178 45% 68%, #2b3132 68%);
+    linear-gradient(160deg, #4e6870 0 45%, #829178 45% 68%, #2b3132 68%); */
 }
 
 .collage-caption {
@@ -713,14 +722,37 @@ img {
   inset: 11% 6% 8% 36%;
   z-index: 1;
   display: grid;
+  overflow: hidden;
   place-items: center;
+  background: #11110f;
 }
 
 .recap-cover-photo img {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  opacity: 1;
+  visibility: visible;
   filter: drop-shadow(0 28px 60px rgba(0, 0, 0, 0.45));
+}
+
+.recap-story img {
+  object-position: 50% var(--photo-pan-y, 50%);
+}
+
+.recap-story img[data-photo-pan='true'] {
+  will-change: object-position;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recap-story img {
+    object-position: 50% 50%;
+    transition: none;
+  }
 }
 
 .recap-cover-copy {

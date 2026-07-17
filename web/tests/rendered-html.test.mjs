@@ -253,6 +253,14 @@ test("turns the final chapter into a desktop-first comprehensive share card", as
   assert.match(app, /formatVisitCount\(language, world\.activeDays\)/);
   assert.match(app, /`\$\{count\}번 방문`/);
   assert.match(app, /`\$\{count\}回訪問`/);
+  assert.match(app, /story\.querySelectorAll<HTMLImageElement>\("img"\)/);
+  assert.match(app, /const isVerticallyCropped = imageAspect < frameAspect - 0\.02/);
+  assert.match(app, /image\.style\.setProperty\("--photo-pan-y"/);
+  assert.match(app, /current \+ distance \* 0\.085/);
+  assert.match(app, /window\.addEventListener\("scroll", requestMeasure/);
+  assert.match(app, /data-main-photo="true"/);
+  assert.match(app, /const minimum = isMainPhoto \? 12 : 0/);
+  assert.match(app, /prefers-reduced-motion: reduce/);
   assert.match(app, /formatMonthRange\(language, journey\.startDate, journey\.endDate\)/);
   assert.match(app, /person\.photoId && photos\.get\(person\.photoId\)/);
   assert.match(app, /t\.peopleCount/);
@@ -267,6 +275,7 @@ test("turns the final chapter into a desktop-first comprehensive share card", as
   assert.match(css, /\.share-summary-photos \{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)[\s\S]*min-height: 0;[\s\S]*overflow: hidden/);
   assert.match(css, /\.share-summary-photos figure \{[\s\S]*min-height: 0;[\s\S]*overflow: hidden/);
   assert.match(css, /\.share-summary-photos img \{[\s\S]*object-fit: cover/);
+  assert.match(css, /\.recap-story img\[data-photo-pan='true'\] \{[\s\S]*object-position/);
   assert.match(css, /\.share-result-grid \{[\s\S]*margin-top: auto/);
   assert.doesNotMatch(app, /share-memory-span/);
 });
