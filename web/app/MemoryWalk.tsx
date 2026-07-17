@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- Object URLs from a user-selected folder cannot use the Next image optimizer. */
 
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   analyzeFiles,
@@ -868,7 +869,7 @@ function LanguageSelector({
 
 function Brand() {
   return (
-    <a className="memory-brand" href="/">
+    <Link className="memory-brand" href="/">
       <img
         alt=""
         aria-hidden="true"
@@ -877,7 +878,7 @@ function Brand() {
         width="36"
       />
       <b>VRC RECAP</b>
-    </a>
+    </Link>
   )
 }
 

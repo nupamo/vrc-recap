@@ -28,7 +28,8 @@ test("renders the photo-first recap in English by default", async () => {
   assert.match(html, /日本語/);
   assert.match(html, /Your photos are never sent to a server/);
   assert.match(html, /vrc-recap-mark\.png/);
-  assert.match(html, /<footer class="recap-footer intro-footer">[\s\S]*©[\s\S]*href="https:\/\/x\.com\/nupamo"/);
+  assert.match(html, /<footer class="recap-footer intro-footer">[\s\S]*©[\s\S]*href="https:\/\/nupa\.moe"/);
+  assert.match(html, /<footer class="recap-footer intro-footer">[\s\S]*href="https:\/\/github\.com\/nupamo\/vrc-recap"/);
   assert.match(html, /googletagmanager\.com\/gtag\/js\?id=G-SYEWNRRSVM/);
   assert.match(html, /gtag\('config', 'G-SYEWNRRSVM'\)/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
@@ -287,7 +288,8 @@ test("turns the final chapter into a desktop-first comprehensive share card", as
   assert.match(app, /shareSpecialValue: \(days: number\)/);
   assert.doesNotMatch(app, /둘만의 날 \$\{days/);
   assert.match(app, /className="recap-footer"/);
-  assert.match(app, /href="https:\/\/x\.com\/nupamo"/);
+  assert.match(app, /href="https:\/\/nupa\.moe"/);
+  assert.match(app, /href="https:\/\/github\.com\/nupamo\/vrc-recap"/);
   assert.match(app, /peopleLabels\.slice\(0, 4\)/);
   assert.match(app, /createShareCardBlob/);
   assert.match(app, /canvas\.width = 1600/);
