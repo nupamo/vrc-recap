@@ -886,6 +886,7 @@ img {
   font-weight: 400;
   letter-spacing: -0.065em;
   line-height: 0.92;
+  filter: drop-shadow(2px 4px 6px #000a);
 }
 
 .recap-cover-copy > p:not(.memory-kicker) {
@@ -1724,6 +1725,33 @@ img {
   text-align: center;
 }
 
+.recap-footer {
+  padding: 26px 20px 30px;
+  border-top: 1px solid rgba(241, 237, 229, 0.12);
+  background: #121210;
+  color: #777168;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.recap-footer p {
+  width: min(100%, var(--landscape-content-max));
+  margin: 0 auto;
+}
+
+.recap-footer a {
+  color: #c98a78;
+  text-underline-offset: 4px;
+}
+
+.recap-footer a:hover,
+.recap-footer a:focus-visible {
+  color: var(--cream);
+  text-decoration: underline;
+}
+
 .recap-cover-copy,
 .chapter-copy,
 .chapter-heading > div,
@@ -1733,13 +1761,13 @@ img {
 }
 
 html:lang(ko) .memory-hero h1 {
-  font-size: clamp(54px, 7.1vw, 112px);
+  font-size: clamp(54px, 6vw, 90px);
   letter-spacing: -0.04em;
   line-height: 1.02;
 }
 
 html:lang(ja) .memory-hero h1 {
-  font-size: clamp(50px, 6.6vw, 104px);
+  font-size: clamp(50px, 5vw, 80px);
   letter-spacing: -0.025em;
   line-height: 1.08;
 }

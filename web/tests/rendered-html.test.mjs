@@ -14,20 +14,22 @@ async function render(path = "/") {
   );
 }
 
-test("renders the photo-first recap in Korean by default", async () => {
+test("renders the photo-first recap in English by default", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
-  assert.match(html, /<html lang="ko">/i);
-  assert.match(html, /사진 속에 남은/);
-  assert.match(html, /우리의 시간/);
-  assert.match(html, /사진 폴더 고르기/);
+  assert.match(html, /<html lang="en">/i);
+  assert.match(html, /Still alive in our photos/);
+  assert.match(html, /the time we shared/);
+  assert.match(html, /Choose photo folder/);
   assert.match(html, /한국어/);
   assert.match(html, /English/);
   assert.match(html, /日本語/);
-  assert.match(html, /사진은 서버로 전송되지 않습니다/);
+  assert.match(html, /Your photos are never sent to a server/);
   assert.match(html, /vrc-recap-mark\.png/);
+  assert.match(html, /googletagmanager\.com\/gtag\/js\?id=G-SYEWNRRSVM/);
+  assert.match(html, /gtag\('config', 'G-SYEWNRRSVM'\)/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
@@ -54,6 +56,13 @@ test("builds a repository-aware static export for GitHub Pages", async () => {
   assert.match(layout, /vrc-recap-mark\.png/);
   assert.match(layout, /width: 2108/);
   assert.match(layout, /height: 1204/);
+  assert.match(layout, /Your VRChat Memories, Revisited/);
+  assert.match(layout, /canonical: siteUrl/);
+  assert.match(layout, /locale: "en_US"/);
+  assert.match(layout, /robots: \{/);
+  assert.match(layout, /const googleAnalyticsId = "G-SYEWNRRSVM"/);
+  assert.match(layout, /window\.dataLayer = window\.dataLayer \|\| \[\]/);
+  assert.match(layout, /gtag\('config', '\$\{googleAnalyticsId\}'\)/);
   assert.match(localVision, /publicAssetPath/);
   assert.match(workflow, /actions\/upload-pages-artifact@v4/);
   assert.match(workflow, /path: "\.\/web\/dist\/client"/);
@@ -88,12 +97,13 @@ test("keeps technical model language out of every user-facing recap string", asy
 
 test("supports Korean, English, and Japanese without translating metadata values", async () => {
   const app = await readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8");
-  assert.match(app, /type Language = "ko" \| "en" \| "ja"/);
+  assert.match(app, /type Language = 'ko' \| 'en' \| 'ja'/);
   assert.match(app, /LANGUAGE_STORAGE_KEY/);
-  assert.match(app, /navigator\.language/);
+  assert.match(app, /useState<Language>\('en'\)/);
+  assert.match(app, /const next: Language =[\s\S]*stored === 'en'[\s\S]*: 'en'/);
   assert.match(app, /document\.documentElement\.lang = next/);
   assert.match(app, /photo\.worldName/);
-  assert.match(app, /photo\.nicknames\.join\(" · "\)/);
+  assert.match(app, /photo\.nicknames\.join\(' · '\)/);
   assert.match(app, /new Intl\.DateTimeFormat\(localeFor\(language\)/);
 });
 
@@ -105,12 +115,12 @@ test("uses smaller CJK display type and phrase-aware wrapping", async () => {
 
   assert.match(css, /html:lang\(ko\) body,[\s\S]*html:lang\(ja\) body \{[\s\S]*line-break: strict;[\s\S]*word-break: keep-all;/);
   assert.match(css, /@supports \(word-break: auto-phrase\)[\s\S]*word-break: auto-phrase;/);
-  assert.match(css, /html:lang\(ko\) \.memory-hero h1 \{[\s\S]*font-size: clamp\(54px, 7\.1vw, 112px\)/);
+  assert.match(css, /html:lang\(ko\) \.memory-hero h1 \{[\s\S]*font-size: clamp\(54px, 6\.5vw, 112px\)/);
   assert.match(css, /html:lang\(ja\) \.memory-hero h1 \{[\s\S]*font-size: clamp\(50px, 6\.6vw, 104px\)/);
   assert.match(css, /html:lang\(ko\) \.share-summary-copy h3 \{[\s\S]*white-space: normal;/);
   assert.match(css, /html:lang\(ja\) \.share-summary-copy h3 \{[\s\S]*white-space: normal;/);
-  assert.match(app, /const shareTitleFontSize = language === "en" \? 67 : language === "ko" \? 59 : 54/);
-  assert.match(app, /const shareValueFontSize = language === "en" \? 27 : language === "ko" \? 24 : 22/);
+  assert.match(app, /const shareTitleFontSize =[\s\S]*language === 'en' \? 67 : language === 'ko' \? 59 : 54/);
+  assert.match(app, /const shareValueFontSize =[\s\S]*language === 'en' \? 27 : language === 'ko' \? 24 : 22/);
 });
 
 test("shows real photos, names, worlds, and discoveries while processing", async () => {
@@ -126,10 +136,10 @@ test("shows real photos, names, worlds, and discoveries while processing", async
   assert.match(analyzer, /discoveries\.daysWithTwoPeople/);
   assert.match(app, /URL\.createObjectURL\(photo\.file\)/);
   assert.match(app, /loading-filmstrip/);
-  assert.match(app, /current\.nicknames\.join\(" · "\)/);
+  assert.match(app, /current\.nicknames\.join\(' · '\)/);
   assert.match(app, /progress\.discoveries\.topNames/);
   assert.match(analyzer, /stage: "preparing",[\s\S]*await waitForPaint\(\)/);
-  assert.match(app, /memory-progress \$\{isPreparing \? "is-indeterminate"/);
+  assert.match(app, /memory-progress \$\{isPreparing \? 'is-indeterminate'/);
   assert.match(app, /loading-film-placeholder/);
   assert.match(css, /@keyframes loading-progress/);
 });
@@ -256,7 +266,7 @@ test("supports recursive folder selection and the browser folder-input fallback"
   const app = await readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8");
   assert.match(app, /showDirectoryPicker/);
   assert.match(app, /async function readDirectory\(handle: LocalDirectoryHandle\)/);
-  assert.match(app, /files\.push\(\.\.\.await readDirectory\(directory\)\)/);
+  assert.match(app, /files\.push\(\.\.\.\(await readDirectory\(directory\)\)\)/);
   assert.match(app, /webkitdirectory/);
   assert.match(app, /multiple/);
 });
@@ -273,7 +283,10 @@ test("turns the final chapter into a desktop-first comprehensive share card", as
   assert.match(app, /journey\.stats\.activeDays/);
   assert.match(app, /journey\.stats\.topMonth/);
   assert.match(app, /journey\.stats\.topWorlds\[0\]/);
-  assert.match(app, /specialName/);
+  assert.match(app, /shareSpecialValue: \(days: number\)/);
+  assert.doesNotMatch(app, /둘만의 날 \$\{days/);
+  assert.match(app, /className="recap-footer"/);
+  assert.match(app, /href="https:\/\/x\.com\/nupamo"/);
   assert.match(app, /peopleLabels\.slice\(0, 4\)/);
   assert.match(app, /createShareCardBlob/);
   assert.match(app, /canvas\.width = 1600/);
@@ -290,16 +303,16 @@ test("turns the final chapter into a desktop-first comprehensive share card", as
   assert.match(app, /summaryPhotos\.map/);
   assert.match(app, /journey\.stats\.topHour/);
   assert.match(app, /formatHour\(language, journey\.stats\.topHour\)/);
-  assert.match(app, /journey\.stats\.topPeriod === "day"/);
+  assert.match(app, /journey\.stats\.topPeriod === 'day'/);
   assert.match(app, /formatCompactDate\(special\.firstDate\)/);
   assert.match(app, /formatVisitCount\(language, world\.activeDays\)/);
   assert.match(app, /`\$\{count\}번 방문`/);
   assert.match(app, /`\$\{count\}回訪問`/);
-  assert.match(app, /story\.querySelectorAll<HTMLImageElement>\("img"\)/);
+  assert.match(app, /story\.querySelectorAll<HTMLImageElement>\('img'\)/);
   assert.match(app, /const isVerticallyCropped = imageAspect < frameAspect - 0\.02/);
-  assert.match(app, /image\.style\.setProperty\("--photo-pan-y"/);
+  assert.match(app, /image\.style\.setProperty\('--photo-pan-y'/);
   assert.match(app, /current \+ distance \* 0\.085/);
-  assert.match(app, /window\.addEventListener\("scroll", requestMeasure/);
+  assert.match(app, /window\.addEventListener\('scroll', requestMeasure/);
   assert.match(app, /data-main-photo="true"/);
   assert.match(app, /const minimum = isMainPhoto \? 12 : 0/);
   assert.match(app, /prefers-reduced-motion: reduce/);
