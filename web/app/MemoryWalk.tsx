@@ -868,7 +868,7 @@ function LanguageSelector({
 
 function Brand() {
   return (
-    <a className="memory-brand" href="#top">
+    <a className="memory-brand" href="/">
       <img
         alt=""
         aria-hidden="true"
@@ -971,12 +971,16 @@ function Intro({
       <footer className="recap-footer intro-footer">
         <p>
           © {new Date().getFullYear()}{' '}
+          <a href="https://nupa.moe" rel="noopener noreferrer" target="_blank">
+            nupamo
+          </a>
+          &nbsp;·&nbsp;
           <a
-            href="https://x.com/nupamo"
+            href="https://github.com/nupamo/vrc-recap"
             rel="noopener noreferrer"
             target="_blank"
           >
-            nupamo
+            github
           </a>
         </p>
       </footer>
@@ -1785,12 +1789,15 @@ function Recap({
       <footer className="recap-footer">
         <p>
           © {new Date().getFullYear()}{' '}
+          <a href="https://nupa.moe" rel="noopener noreferrer" target="_blank">
+            nupamo
+          </a>
           <a
-            href="https://x.com/nupamo"
+            href="https://github.com/nupamo/vrc-recap"
             rel="noopener noreferrer"
             target="_blank"
           >
-            nupamo
+            github
           </a>
         </p>
       </footer>
