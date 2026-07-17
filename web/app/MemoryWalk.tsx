@@ -2,7 +2,6 @@
 
 /* eslint-disable @next/next/no-img-element -- Object URLs from a user-selected folder cannot use the Next image optimizer. */
 
-import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   analyzeFiles,
@@ -869,7 +868,7 @@ function LanguageSelector({
 
 function Brand() {
   return (
-    <Link className="memory-brand" href="/">
+    <a className="memory-brand" href="#top">
       <img
         alt=""
         aria-hidden="true"
@@ -878,7 +877,7 @@ function Brand() {
         width="36"
       />
       <b>VRC RECAP</b>
-    </Link>
+    </a>
   )
 }
 
@@ -1027,7 +1026,7 @@ function Analyzing({
   const isPreparing = progress.stage === 'preparing'
 
   return (
-    <main className="memory-loading">
+    <main className="memory-loading" id="top">
       {current && (
         <div
           className="loading-backdrop"

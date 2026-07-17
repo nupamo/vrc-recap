@@ -28,6 +28,7 @@ test("renders the photo-first recap in English by default", async () => {
   assert.match(html, /日本語/);
   assert.match(html, /Your photos are never sent to a server/);
   assert.match(html, /vrc-recap-mark\.png/);
+  assert.match(html, /class="memory-brand" href="#top"/);
   assert.match(html, /<footer class="recap-footer intro-footer">[\s\S]*©[\s\S]*href="https:\/\/nupa\.moe"/);
   assert.match(html, /<footer class="recap-footer intro-footer">[\s\S]*href="https:\/\/github\.com\/nupamo\/vrc-recap"/);
   assert.match(html, /googletagmanager\.com\/gtag\/js\?id=G-SYEWNRRSVM/);
@@ -99,6 +100,9 @@ test("keeps technical model language out of every user-facing recap string", asy
 
 test("supports Korean, English, and Japanese without translating metadata values", async () => {
   const app = await readFile(new URL("../app/MemoryWalk.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(app, /from 'next\/link'/);
+  assert.match(app, /<a className="memory-brand" href="#top">/);
+  assert.match(app, /<main className="memory-loading" id="top">/);
   assert.match(app, /type Language = 'ko' \| 'en' \| 'ja'/);
   assert.match(app, /LANGUAGE_STORAGE_KEY/);
   assert.match(app, /useState<Language>\('en'\)/);
